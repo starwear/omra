@@ -102,12 +102,89 @@ async def handle_client(reader, writer):
                 )
 
                 # Инициализируем SSL
-                await writer.start_tls(context)
+                try:
+                    await writer.start_tls(context)
+                except Exception as error:
+                    logger.info(f"Ошибка SSL: {error}")
+                    break 
+                finally:
+                    # Записываем ответ в сокет
+                    writer.write(response)
+                    await writer.drain()
+                    logger.info("Отправил команду MRIM_CS_SSL_ACK клиенту {}".format(address[0]))
+            elif unbuilded_header.get("command") == MRIM_CS_LOGIN2:
+                # Обработка MRIM_CS_LOGIN2
+                logger.info("Получил команду MRIM_CS_LOGIN2 от клиента {}".format(address[0], address[1]))
+                logger.info("Разобранный заголовок: {}".format(unbuilded_header))
 
-                # Записываем ответ в сокет
-                writer.write(response)
-                await writer.drain()
-                logger.info("Отправил команду MRIM_CS_SSL_ACK клиенту {}".format(address[0]))
+                # Выполняем авторизацию
+                result_auth = await login2(writer, unbuilded_header.get("other_data"), unbuilded_header.get("magic"), unbuilded_header.get("proto"), unbuilded_header.get("seq"), connection, address)
+
+                # Проверяем результат
+                if result_auth.get("result") == "success":
+                    email = result_auth.get("email")
+                    presence_setted = False # Установлен ли статус клиента в словаре
+
+                    clients[address] = {
+                        "writer": writer,
+                        "email": result_auth.get("email"),
+                        "magic": unbuilded_header.get("magic"),
+                        "proto": unbuilded_header.get("proto")
+                    }
+
+                    for presence in presences.values():
+                        if presence.get("email") == email:
+                            presences[email]["status"] = result_auth.get("status")
+                            presences[email]["xstatus_meaning"] = result_auth.get("xstatus_meaning")
+                            presences[email]["xstatus_title"] = result_auth.get("xstatus_title")
+                            presences[email]["xstatus_description"] = result_auth.get("xstatus_description")
+                            presence_setted = True
+
+                    if presence_setted == False:
+                        presences[address] = {
+                            "email": email,
+                            "status": result_auth.get("status"),
+                            "xstatus_meaning": result_auth.get("xstatus_meaning"),
+                            "xstatus_title": result_auth.get("xstatus_title"),
+                            "xstatus_description": result_auth.get("xstatus_description"),
+                            "com_support": result_auth.get("com_support")
+                        }
+                    
+                    # Получаем данные о аккаунте пользователя
+                    async with connection.cursor(aiomysql.DictCursor) as cursor:
+                        await cursor.execute("SELECT * FROM user_data WHERE email = %s", (email,))
+                        result_account_data = await cursor.fetchone()
+
+                    # Получаем контакты
+                    contacts = json.loads(result_account_data.get("contacts"))
+
+                    # Собираем пакет
+                    status = await create_ul(result_auth.get("status"))
+                    email_in_lps = await create_lps(email)
+
+                    response = status + email_in_lps
+
+                    # Рассылка нового статуса всем контактам
+                    for contact in contacts:
+                        for client in clients.values():
+                            if client.get("email") == contact.get("email"):
+                                if client.get("proto") in [65543, 65544, 65545, 65546, 65547, 65548, 65549]:
+                                    response = await build_header(
+                                        client.get("magic"),
+                                        client.get("proto"),
+                                        1,
+                                        MRIM_CS_USER_STATUS,
+                                        len(response)
+                                    ) + response
+
+                                    client.get("writer").write(response)
+                                    await client.get("writer").drain()
+                                    logger.info(f"Отправил пакет MRIM_CS_USER_STATUS пользователю {client.get("email")}")
+
+                    logger.info("Словарь с клиентами: {}".format(clients))
+                    logger.info("Словарь с статусами: {}".format(presences))
+                else:
+                    break
             elif unbuilded_header.get("command") == MRIM_CS_LOGIN3:
                 # Обработка MRIM_CS_LOGIN3
                 logger.info("Получил команду MRIM_CS_LOGIN3 от клиента {}".format(address[0], address[1]))
@@ -123,7 +200,9 @@ async def handle_client(reader, writer):
 
                     clients[address] = {
                         "writer": writer,
-                        "email": result_auth.get("email")
+                        "email": result_auth.get("email"),
+                        "magic": unbuilded_header.get("magic"),
+                        "proto": unbuilded_header.get("proto")
                     }
 
                     for presence in presences.values():
@@ -152,24 +231,178 @@ async def handle_client(reader, writer):
                 logger.info("Получил команду MRIM_CS_PING от клиента {}".format(address[0], address[1]))
             elif unbuilded_header.get("command") == MRIM_CS_CHANGE_STATUS:
                 logger.info("Получил команду MRIM_CS_CHANGE_STATUS от клиента {}".format(address[0]))
-                await change_status(writer, connection, address, email, unbuilded_header.get("other_data"), unbuilded_header.get("proto"))
+                await change_status(writer, connection, address, email, unbuilded_header.get("other_data"), unbuilded_header.get("proto"), unbuilded_header.get("magic"), unbuilded_header.get("seq"))
             else:
                 logger.info("Неизвестная команда {}: {}".format(hex(unbuilded_header.get("command")), unbuilded_header))
     except Exception as error:
        logger.info("Произошла ошибка: {}".format(error))
     finally:
+        # Если пользователь авторизован, рассылаем всем контактам статус офлайн
+        if email:
+            # Удаляем пользователя из словарей
+            del clients[address]
+            del presences[address]
+
+            # Получаем данные о аккаунте пользователя
+            async with connection.cursor(aiomysql.DictCursor) as cursor:
+                await cursor.execute("SELECT * FROM user_data WHERE email = %s", (email,))
+                result_account_data = await cursor.fetchone()
+
+            # Получаем контакты
+            contacts = json.loads(result_account_data.get("contacts"))
+
+            # Собираем пакет
+            status = await create_ul(0)
+            email = await create_lps(email)
+
+            response = status + email
+
+            # Рассылка нового статуса всем контактам
+            for contact in contacts:
+                for client in clients.values():
+                    if client.get("email") == contact.get("email"):
+                        if client.get("proto") in [65543, 65544, 65545, 65546, 65547, 65548, 65549]:
+                            response = await build_header(
+                                client.get("magic"),
+                                client.get("proto"),
+                                1,
+                                MRIM_CS_USER_STATUS,
+                                len(response)
+                            ) + response
+
+                            client.get("writer").write(response)
+                            await client.get("writer").drain()
+                            logger.info(f"Отправил пакет MRIM_CS_USER_STATUS пользователю {client.get("email")}")
+
         # Закрываем подключение
         writer.close()
         await writer.wait_closed()
         connection.close()
 
-        if email:
-            del clients[address]
-            del presences[address]
-
         logger.info("Словарь с клиентами: {}".format(clients))
         logger.info("Словарь с статусами: {}".format(presences))
         logger.info("Работа с клиентом {} завершена".format(address[0]))
+
+async def login2(writer, data, magic, proto, seq, connection, address):
+    """Обработка пакета MRIM_CS_LOGIN2"""
+    # Парсим пакет
+    parser_result = await login2_parser(data, proto)
+
+    # Получаем данные
+    email = parser_result.get("email")
+    password = parser_result.get("password")
+
+    status = parser_result.get("status")
+    xstatus_meaning = parser_result.get("xstatus_meaning")
+    xstatus_title = parser_result.get("xstatus_title")
+    xstatus_description = parser_result.get("xstatus_description")
+
+    com_support = parser_result.get("com_support")
+
+    version1 = parser_result.get("version1")
+    version2 = parser_result.get("version2")
+
+    language = parser_result.get("language")
+
+    # Хешируем пароль в md5
+    hashed_password = hashlib.md5(password.encode()).hexdigest()
+
+    # Проверка на наличие данных
+    # if not email or not password or not version1 or not version2:
+    #     return {
+    #         "result": "fail"
+    #     }
+  
+    # Ищем аккаунт в базе данных
+    async with connection.cursor(aiomysql.DictCursor) as cursor:
+        await cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+        result_account = await cursor.fetchone()
+
+    # Поиск данных аккаунта в базе данных
+    async with connection.cursor(aiomysql.DictCursor) as cursor:
+        await cursor.execute("SELECT * FROM user_data WHERE email = %s", (email,))
+        result_account_data = await cursor.fetchone()
+
+    logger.info("Попытка входа с почтой {}".format(email))
+
+    # Проверка пароля
+    if result_account is None or result_account_data is None:
+        # Собираем ответ
+        response = await build_header(
+            magic, # Магический заголовок
+            proto, # Версия протокола
+            seq + 1, # Очередь пакета
+            MRIM_CS_LOGIN_REJ, # Команда
+            0 # Размер пакета без заголовка
+        )
+
+        # Записываем ответ в сокет
+        writer.write(response)
+        await writer.drain()
+        logger.info("Отправил команду MRIM_CS_LOGIN_REJ клиенту {}".format(address[0]))
+
+        # Возвращаем результат авторизации
+        return {
+            "result": "fail"
+        }
+
+    # Получаем данные о аккаунте
+    nickname = result_account_data.get("nickname")
+    groups = result_account_data.get("groups")
+    contacts = result_account_data.get("contacts")
+    valid_password = result_account.get("password")
+
+    # Проверка пароля
+    if valid_password == hashed_password:
+        # Собираем ответ
+        response = await build_header(
+            magic, # Магический заголовок
+            proto, # Версия протокола
+            seq + 1, # Очередь пакета
+            MRIM_CS_LOGIN_ACK, # Команда
+            0 # Размер пакета без заголовка
+        )
+
+        # Записываем ответ в сокет
+        writer.write(response)
+        await writer.drain()
+        logger.info("Отправил команду MRIM_CS_LOGIN_ACK клиенту {}".format(address[0]))
+
+        # Отправляем данные о аккаунте
+        await user_info(writer, nickname, address, magic, proto, seq)
+        await contact_list(writer, groups, contacts, address, magic, proto, seq, connection)
+
+        # Возвращаем результат авторизации
+        return {
+            "result": "success",
+            "email": email,
+            "status": status,
+            "xstatus_meaning": xstatus_meaning,
+            "xstatus_title": xstatus_title,
+            "xstatus_description": xstatus_description,
+            "com_support": com_support,
+            "version1": version1,
+            "version2": version2
+        }
+    else:
+        # Собираем ответ
+        response = await build_header(
+            magic, # Магический заголовок
+            proto, # Версия протокола
+            seq + 1, # Очередь пакета
+            MRIM_CS_LOGIN_REJ, # Команда
+            0 # Размер пакета без заголовка
+        )
+
+        # Записываем ответ в сокет
+        writer.write(response)
+        await writer.drain()
+        logger.info("Отправил команду MRIM_CS_LOGIN_REJ клиенту {}".format(address[0]))
+
+        # Возвращаем результат авторизации
+        return {
+            "result": "fail"
+        }        
 
 async def login3(writer, data, magic, proto, seq, connection, address):
     """Обработка пакета MRIM_CS_LOGIN3"""
@@ -279,6 +512,11 @@ async def user_info(writer, nickname, address, magic, proto, seq):
         msg_unread = await create_lps("MESSAGES.UNREAD") + await create_lps("0", "utf-16-le")
         nickname = await create_lps("MRIM.NICKNAME") + await create_lps(nickname, "utf-16-le")
         endpoint = await create_lps("client.endpoint") + await create_lps("{}:{}".format(address[0], address[1]), "utf-16-le")
+    elif proto in [65543, 65544, 65545, 65546, 65547, 65548, 65549]:
+        msg_total = await create_lps("MESSAGES.TOTAL") + await create_lps("0")
+        msg_unread = await create_lps("MESSAGES.UNREAD") + await create_lps("0")
+        nickname = await create_lps("MRIM.NICKNAME") + await create_lps(nickname)
+        endpoint = await create_lps("client.endpoint") + await create_lps("{}:{}".format(address[0], address[1]))
 
     size = len(msg_total + msg_unread + nickname + endpoint)
 
@@ -343,7 +581,7 @@ async def contact_list(writer, groups, contacts, address, magic, proto, seq, con
                     # Сохраняем статус контакта
                     xstatus_meaning = presence.get("xstatus_meaning")
                     xstatus_title = presence.get("xstatus_title")
-                    xstatus_desc = presence.get("xstatus_desc")
+                    xstatus_desc = presence.get("xstatus_description")
                     status_num = presence.get("status")
                     com_support = presence.get("com_support")
 
@@ -369,6 +607,81 @@ async def contact_list(writer, groups, contacts, address, magic, proto, seq, con
             contacts_list += await create_lps("", "utf-16-le") # ???
             contacts_list += await create_lps("", "utf-16-le") # ???
             contacts_list += await create_ul(0) # ???
+    elif proto in [65544, 65545, 65546, 65547, 65548, 65549]:
+        # Выставляем нужную маску
+        contacts_mask = await create_lps("uussuus")
+
+        # Добавляем группы в контакт-лист
+        for group in groups:
+            groups_list += await create_ul(0)
+            groups_list += await create_lps(group.get("group_name"))
+
+        # Добавляем контактов в контакт-лист
+        for contact in contacts:
+            async with connection.cursor(aiomysql.DictCursor) as cursor:
+                await cursor.execute("SELECT * FROM user_data WHERE email = %s", (contact.get("email"),))
+                result_account_data = await cursor.fetchone()
+
+            # Выставляем никнейм контакта
+            if result_account_data is None:
+                contact_nickname = "[deleted]"
+            else:
+                contact_nickname = result_account_data.get("nickname")
+
+            # Статус
+            status_num = 0
+
+            # Ищем клиента в списке и сохраняемм его статус
+            for presence in presences.values():
+                if presence.get("email") == contact.get("email"):
+                    # Сохраняем статус контакта
+                    status_num = presence.get("status")
+
+            # Добавляем контакт в лист
+            contacts_list += await create_ul(0) # flags
+            contacts_list += await create_ul(contact.get("index")) # group id
+            contacts_list += await create_lps(contact.get("email")) # email
+            contacts_list += await create_lps(contact_nickname) # nickname
+            contacts_list += await create_ul(contact.get("authorized")) # authorized
+            contacts_list += await create_ul(status_num) # status
+            contacts_list += await create_lps("") # phone
+    elif proto in [65543]:
+        # Выставляем нужную маску
+        contacts_mask = await create_lps("uussuu")
+
+        # Добавляем группы в контакт-лист
+        for group in groups:
+            groups_list += await create_ul(0)
+            groups_list += await create_lps(group.get("group_name"))
+
+        # Добавляем контактов в контакт-лист
+        for contact in contacts:
+            async with connection.cursor(aiomysql.DictCursor) as cursor:
+                await cursor.execute("SELECT * FROM user_data WHERE email = %s", (contact.get("email"),))
+                result_account_data = await cursor.fetchone()
+
+            # Выставляем никнейм контакта
+            if result_account_data is None:
+                contact_nickname = "[deleted]"
+            else:
+                contact_nickname = result_account_data.get("nickname")
+
+            # Статус
+            status_num = 0
+
+            # Ищем клиента в списке и сохраняемм его статус
+            for presence in presences.values():
+                if presence.get("email") == contact.get("email"):
+                    # Сохраняем статус контакта
+                    status_num = presence.get("status")
+
+            # Добавляем контакт в лист
+            contacts_list += await create_ul(0) # flags
+            contacts_list += await create_ul(contact.get("index")) # group id
+            contacts_list += await create_lps(contact.get("email")) # email
+            contacts_list += await create_lps(contact_nickname) # nickname
+            contacts_list += await create_ul(contact.get("authorized")) # authorized
+            contacts_list += await create_ul(status_num) # status  
 
     size = len(status + groups_number + groups_mask + contacts_mask + groups_list + contacts_list)
 
@@ -386,8 +699,9 @@ async def contact_list(writer, groups, contacts, address, magic, proto, seq, con
     await writer.drain()
     logger.info("Отправил команду MRIM_CS_CONTACT_LIST2 клиенту {}".format(address[0]))
 
-async def change_status(writer, connection, address, email, data, version):
+async def change_status(writer, connection, address, email, data, version, magic, seq,):
     """Смена статуса пользователем"""
+    # Получаем данные о аккаунте пользователя
     async with connection.cursor(aiomysql.DictCursor) as cursor:
         await cursor.execute("SELECT * FROM user_data WHERE email = %s", (email,))
         result_account_data = await cursor.fetchone()
@@ -398,15 +712,38 @@ async def change_status(writer, connection, address, email, data, version):
     # Парсим пакет
     parsed_data = await change_status_parser(data, version)
 
-    logger.info("Разобранный change_status: {}".format(parsed_data))
-    logger.info("Словарь с статусами: {}".format(presences))
     # Заменяем статус в словаре
     presences[address]["status"] = parsed_data.get("status")
     presences[address]["xstatus_meaning"] = parsed_data.get("xstatus_meaning")
     presences[address]["xstatus_title"] = parsed_data.get("xstatus_title")
     presences[address]["xstatus_description"] = parsed_data.get("xstatus_description")
     presences[address]["com_support"] = parsed_data.get("com_support")
-    logger.info("Словарь с статусами: {}".format(presences))
+
+    # Сборка пакета
+    status = await create_ul(parsed_data.get("status"))
+    email = await create_lps(email)
+
+    response = status + email
+
+    # Загружаем контакты в json
+    contacts = json.loads(contacts)
+
+    # Рассылка нового статуса всем контактам
+    for contact in contacts:
+        for client in clients.values():
+            if client.get("email") == contact.get("email"):
+                if client.get("proto") in [65543, 65544, 65545, 65546, 65547, 65548, 65549]:
+                    response = await build_header(
+                        client.get("magic"),
+                        client.get("proto"),
+                        seq + 1,
+                        MRIM_CS_USER_STATUS,
+                        len(response)
+                    ) + response
+
+                    client.get("writer").write(response)
+                    await client.get("writer").drain()
+                    logger.info(f"Отправил пакет MRIM_CS_USER_STATUS пользователю {client.get("email")}")
 
 async def main():
     """Главная функция сервера"""

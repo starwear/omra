@@ -55,6 +55,14 @@ async def login3_parser(data, proto):
         version2_start = geolist_end + 4
         version2_end = version2_start + version2_length
         version2 = data[version2_start:version2_end].decode("windows-1251")
+
+        # Возвращаем
+        return {
+            "email": email,
+            "password": password,
+            "version1": version1,
+            "version2": version2
+        }
     elif proto in [65558, 65559]:
         # Извлечение почты
         email_length = int.from_bytes(data[0:4], "little")
@@ -105,6 +113,14 @@ async def login3_parser(data, proto):
         version2_start = geolist_end + 4
         version2_end = version2_start + version2_length
         version2 = data[version2_start:version2_end].decode("windows-1251")
+
+        # Возвращаем
+        return {
+            "email": email,
+            "password": password,
+            "version1": version1,
+            "version2": version2
+        }
     else:
         # Извлечение почты
         email_length = int.from_bytes(data[0:4], "little")
@@ -156,12 +172,13 @@ async def login3_parser(data, proto):
         version2_end = version2_start + version2_length
         version2 = data[version2_start:version2_end].decode("windows-1251")
 
-    return {
-        "email": email,
-        "password": password,
-        "version1": version1,
-        "version2": version2
-    }
+        # Возвращаем
+        return {
+            "email": email,
+            "password": password,
+            "version1": version1,
+            "version2": version2
+        }
 
 async def login2_parser(data, proto):
     """Парсер MRIM_CS_LOGIN2"""
@@ -188,6 +205,20 @@ async def login2_parser(data, proto):
         user_agent_start = status_end + 4
         user_agent_end = user_agent_start + user_agent_length
         user_agent = data[user_agent_start:user_agent_end].decode("windows-1251")
+    
+        # Возвращаем
+        return {
+            "email": email,
+            "password": password,
+            "status": status,
+            "xstatus_meaning": "",
+            "xstatus_title": "",
+            "xstatus_description": "",
+            "com_support": 0,
+            "version1": "",
+            "version2": user_agent,
+            "language": "ru"
+        }
     elif proto in [65551]:
         # Извлечение почты
         email_length = int.from_bytes(data[0:4], "little")
@@ -236,6 +267,20 @@ async def login2_parser(data, proto):
         version2_start = version1_end + 4
         version2_end = version2_start + version2_length
         version2 = data[version2_start:version2_end].decode("windows-1251")
+        
+        # Возвращаем
+        return {
+            "email": email,
+            "password": password,
+            "status": status,
+            "xstatus_meaning": xstatus_meaning,
+            "xstatus_title": xstatus_title,
+            "xstatus_description": xstatus_description,
+            "com_support": com_support,
+            "version1": version1,
+            "version2": version2,
+            "language": language
+        }
     elif proto in [65552, 65554, 65555]:
         # Извлечение почты
         email_length = int.from_bytes(data[0:4], "little")
@@ -290,6 +335,20 @@ async def login2_parser(data, proto):
         version2_start = language_end + 4
         version2_end = version2_start + version2_length
         version2 = data[version2_start:version2_end].decode("windows-1251")
+
+        # Возвращаем
+        return {
+            "email": email,
+            "password": password,
+            "status": status,
+            "xstatus_meaning": xstatus_meaning,
+            "xstatus_title": xstatus_title,
+            "xstatus_description": xstatus_description,
+            "com_support": com_support,
+            "version1": version1,
+            "version2": version2,
+            "language": language
+        }
     elif proto in [65556]:
         # Извлечение почты
         email_length = int.from_bytes(data[0:4], "little")
@@ -344,6 +403,20 @@ async def login2_parser(data, proto):
         version2_start = language_end + 12
         version2_end = version2_start + version2_length
         version2 = data[version2_start:version2_end].decode("windows-1251")
+
+        # Возвращаем
+        return {
+            "email": email,
+            "password": password,
+            "status": status,
+            "xstatus_meaning": xstatus_meaning,
+            "xstatus_title": xstatus_title,
+            "xstatus_description": xstatus_description,
+            "com_support": com_support,
+            "version1": version1,
+            "version2": version2,
+            "language": language
+        }
     else:
         # Извлечение почты
         email_length = int.from_bytes(data[0:4], "little")
@@ -368,43 +441,82 @@ async def login2_parser(data, proto):
         user_agent_end = user_agent_start + user_agent_length
         user_agent = data[user_agent_start:user_agent_end].decode("windows-1251")
 
+        # Возвращаем
+        return {
+            "email": email,
+            "password": password,
+            "status": status,
+            "xstatus_meaning": xstatus_meaning,
+            "xstatus_title": xstatus_title,
+            "xstatus_description": xstatus_description,
+            "com_support": com_support,
+            "version1": version1,
+            "version2": version2,
+            "language": language
+        }
+    
 async def change_status_parser(data, proto):
     """Парсер MRIM_CS_CHANGE_STATUS"""
-    # Извлекаем числовой статус
-    status = int.from_bytes(data[0:4], "little")
+    if proto in [65543, 65544, 65545, 65546, 65547, 65548, 65549]:
+        # Извлекаем числовой статус
+        status = int.from_bytes(data[0:4], "little")
 
-    # Извлекаем длину значения хстатуса
-    xstatus_meaning_length = int.from_bytes(data[4:8], "little")
+        # Возвращаем
+        return {
+            "status": status,
+            "xstatus_meaning": "",
+            "xstatus_title": "",
+            "xstatus_description": "",
+            "com_support": 0
+        }
+    elif proto in [65559]:
+        # Извлекаем числовой статус
+        status = int.from_bytes(data[0:4], "little")
 
-    # Извлекаем значение хстатуса
-    xstatus_meaning_start = 8
-    xstatus_meaning_end = xstatus_meaning_start + xstatus_meaning_length
-    xstatus_meaning = data[xstatus_meaning_start:xstatus_meaning_end].decode('windows-1251')
+        # Извлекаем длину значения хстатуса
+        xstatus_meaning_length = int.from_bytes(data[4:8], "little")
 
-    # Извлечение длины заголовка хстатуса 
-    xstatus_title_length = int.from_bytes(data[xstatus_meaning_end:xstatus_meaning_end + 4], "little")
+        # Извлекаем значение хстатуса
+        xstatus_meaning_start = 8
+        xstatus_meaning_end = xstatus_meaning_start + xstatus_meaning_length
+        xstatus_meaning = data[xstatus_meaning_start:xstatus_meaning_end].decode('windows-1251')
 
-    # Извлечение заголовка статуса
-    xstatus_title_start = xstatus_meaning_end + 4
-    xstatus_title_end = xstatus_title_start + xstatus_title_length
-    xstatus_title = data[xstatus_title_start:xstatus_title_end].decode("utf-16-le")
+        # Извлечение длины заголовка хстатуса 
+        xstatus_title_length = int.from_bytes(data[xstatus_meaning_end:xstatus_meaning_end + 4], "little")
 
-    # Извлечение длины описания хстатуса
-    xstatus_description_length = int.from_bytes(data[xstatus_title_end:xstatus_title_end + 4], "little")
+        # Извлечение заголовка статуса
+        xstatus_title_start = xstatus_meaning_end + 4
+        xstatus_title_end = xstatus_title_start + xstatus_title_length
+        xstatus_title = data[xstatus_title_start:xstatus_title_end].decode("utf-16-le")
 
-    # Извлечение описания хстатуса
-    xstatus_description_start = xstatus_title_end + 4
-    xstatus_description_end = xstatus_description_start + xstatus_description_length
-    xstatus_description = data[xstatus_description_start:xstatus_description_end].decode("utf-16-le")
+        # Извлечение длины описания хстатуса
+        xstatus_description_length = int.from_bytes(data[xstatus_title_end:xstatus_title_end + 4], "little")
 
-    # com_support
-    com_support = int.from_bytes(data[xstatus_description_end:xstatus_description_end + 4], "little")
+        # Извлечение описания хстатуса
+        xstatus_description_start = xstatus_title_end + 4
+        xstatus_description_end = xstatus_description_start + xstatus_description_length
+        xstatus_description = data[xstatus_description_start:xstatus_description_end].decode("utf-16-le")
 
-    # Возвращаем
-    return {
-        "status": status,
-        "xstatus_meaning": xstatus_meaning,
-        "xstatus_title": xstatus_title,
-        "xstatus_description": xstatus_description,
-        "com_support": com_support
-    }
+        # com_support
+        com_support = int.from_bytes(data[xstatus_description_end:xstatus_description_end + 4], "little")
+
+        # Возвращаем
+        return {
+            "status": status,
+            "xstatus_meaning": xstatus_meaning,
+            "xstatus_title": xstatus_title,
+            "xstatus_description": xstatus_description,
+            "com_support": com_support
+        }
+    else:
+        # Извлекаем числовой статус
+        status = int.from_bytes(data[0:4], "little")
+
+        # Возвращаем
+        return {
+            "status": status,
+            "xstatus_meaning": "",
+            "xstatus_title": "",
+            "xstatus_description": "",
+            "com_support": 0
+        }

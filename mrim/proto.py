@@ -27,7 +27,7 @@ MRIM_CS_LOGIN2 = 0x1038 # C -> S
     # LPS -> client info
 MRIM_CS_LOGIN3 = 0x1078 # C -> S
     # LPS -> login
-    # LPS -> password (md5)
+    # LPS -> password (md5, clear in 5.6)
     # DWORD -> ???
     # LPS -> version
     # LPS -> locale
@@ -67,11 +67,11 @@ GET_CONTACTS_INTERR = 0x0002
         # LPS -> nickname (utf-16-le)
         # UL -> authorization (0 - authorized, 1 - deauthorized)
         # UL -> status (num)
-        # LPS -> phone number (ex. +70000000000)
+        # LPS -> phone number (ex. 70000000000)
         # LPS -> xstatus meaning
         # LPS -> xstatus title (utf-16-le)
         # LPS -> xstatus description (utf-16-le)
-        # LPS -> hide client (ex. 0x3FF or -1)
+        # LPS -> com_support (ex. 0x3FF)
         # LPS -> user agent (formated string) 
         # UL -> ???
         # UL -> ???
