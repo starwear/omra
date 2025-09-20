@@ -2,6 +2,9 @@
 
 # OMRA by Starwear
 
+# Импортируем secrets
+import secrets
+
 ### Взаимодействие с протоколом
 
 async def build_header(magic: int, proto: int, seq: int, command: int, size: int):
@@ -63,6 +66,13 @@ async def create_lps(value: str, encoding: str = "windows-1251"):
 
     # Результат
     result = value_length + value_encoded
+
+    # Возвращаем
+    return result
+
+async def create_uidl():
+    # Генерируем 8 символов
+    result = secrets.token_urlsafe(6)
 
     # Возвращаем
     return result
