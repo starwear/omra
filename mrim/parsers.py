@@ -2,58 +2,159 @@
 
 # OMRA by Starwear
 
-async def login3_parser(data):
+async def login3_parser(data, proto):
     """Парсер MRIM_CS_LOGIN3"""
-    # Извлечение почты
-    email_length = int.from_bytes(data[0:4], "little")
-    email_start = 4
-    email_end = email_start + email_length
-    email = data[email_start:email_end].decode("windows-1251")
+    if proto in [65557]:
+        # Извлечение почты
+        email_length = int.from_bytes(data[0:4], "little")
+        email_start = 4
+        email_end = email_start + email_length
+        email = data[email_start:email_end].decode("windows-1251")
 
-    # Извлечение пароля
-    password_length = int.from_bytes(data[email_end:email_end + 4], "little")
-    password_start = email_end + 4
-    password_end = password_start + password_length
-    password = data[password_start:password_end].hex()
-    
-    # Извлечение DWORD ???
-    unknown_dword1_start = password_end
-    unknown_dword1_end = password_end + 4
-    unknown_dword1 = int.from_bytes(data[unknown_dword1_start:unknown_dword1_end], "little")
+        # Извлечение пароля
+        password_length = int.from_bytes(data[email_end:email_end + 4], "little")
+        password_start = email_end + 4
+        password_end = password_start + password_length
+        password = data[password_start:password_end].decode("windows-1251")
+        
+        # Извлечение DWORD ???
+        unknown_dword1_start = password_end
+        unknown_dword1_end = password_end + 4
+        unknown_dword1 = int.from_bytes(data[unknown_dword1_start:unknown_dword1_end], "little")
 
-    # Извлечение 1 версии
-    version1_length = int.from_bytes(data[unknown_dword1_end:unknown_dword1_end + 4], "little")
-    version1_start = unknown_dword1_end + 4
-    version1_end = version1_start + version1_length
-    version1 = data[version1_start:version1_end].decode("windows-1251")
+        # Извлечение 1 версии
+        version1_length = int.from_bytes(data[unknown_dword1_end:unknown_dword1_end + 4], "little")
+        version1_start = unknown_dword1_end + 4
+        version1_end = version1_start + version1_length
+        version1 = data[version1_start:version1_end].decode("windows-1251")
 
-    # Извлечение локализации
-    locale_length = int.from_bytes(data[version1_end:version1_end + 4], "little")
-    locale_start = version1_end + 4
-    locale_end = locale_start + locale_length
-    locale = data[locale_start:locale_end].decode("windows-1251")
+        # Извлечение локализации
+        locale_length = int.from_bytes(data[version1_end:version1_end + 4], "little")
+        locale_start = version1_end + 4
+        locale_end = locale_start + locale_length
+        locale = data[locale_start:locale_end].decode("windows-1251")
 
-    # Извлечение DWORD ???
-    unknown_dword2_start = locale_end
-    unknown_dword2_end = locale_end + 4
-    unknown_dword2 = int.from_bytes(data[unknown_dword2_start:unknown_dword2_end], "little")
+        # Извлечение DWORD ???
+        unknown_dword2_start = locale_end
+        unknown_dword2_end = locale_end + 4
+        unknown_dword2 = int.from_bytes(data[unknown_dword2_start:unknown_dword2_end], "little")
 
-    # Извлечение DWORD ???
-    unknown_dword3_start = unknown_dword2_end
-    unknown_dword3_end = unknown_dword2_end + 4
-    unknown_dword3 = int.from_bytes(data[unknown_dword3_start:unknown_dword3_end], "little")
+        # Извлечение DWORD ???
+        unknown_dword3_start = unknown_dword2_end
+        unknown_dword3_end = unknown_dword2_end + 4
+        unknown_dword3 = int.from_bytes(data[unknown_dword3_start:unknown_dword3_end], "little")
 
-    # geo-list ???
-    geolist_length = int.from_bytes(data[unknown_dword3_end:unknown_dword3_end + 4], "little")
-    geolist_start = unknown_dword3_end + 4
-    geolist_end = geolist_start + geolist_length
-    geolist = data[geolist_start:geolist_end].decode("windows-1251")
+        # geo-list ???
+        geolist_length = int.from_bytes(data[unknown_dword3_end:unknown_dword3_end + 4], "little")
+        geolist_start = unknown_dword3_end + 4
+        geolist_end = geolist_start + geolist_length
+        geolist = data[geolist_start:geolist_end].decode("windows-1251")
 
-    # Извлечение 2 версии
-    version2_length = int.from_bytes(data[geolist_end:geolist_end + 4], "little")
-    version2_start = geolist_end + 4
-    version2_end = version2_start + version2_length
-    version2 = data[version2_start:version2_end].decode("windows-1251")
+        # Извлечение 2 версии
+        version2_length = int.from_bytes(data[geolist_end:geolist_end + 4], "little")
+        version2_start = geolist_end + 4
+        version2_end = version2_start + version2_length
+        version2 = data[version2_start:version2_end].decode("windows-1251")
+    elif proto in [65558, 65559]:
+        # Извлечение почты
+        email_length = int.from_bytes(data[0:4], "little")
+        email_start = 4
+        email_end = email_start + email_length
+        email = data[email_start:email_end].decode("windows-1251")
+
+        # Извлечение пароля
+        password_length = int.from_bytes(data[email_end:email_end + 4], "little")
+        password_start = email_end + 4
+        password_end = password_start + password_length
+        password = data[password_start:password_end].hex()
+
+        # Извлечение DWORD ???
+        unknown_dword1_start = password_end
+        unknown_dword1_end = password_end + 4
+        unknown_dword1 = int.from_bytes(data[unknown_dword1_start:unknown_dword1_end], "little")
+        # Извлечение 1 версии
+        version1_length = int.from_bytes(data[unknown_dword1_end:unknown_dword1_end + 4], "little")
+        version1_start = unknown_dword1_end + 4
+        version1_end = version1_start + version1_length
+        version1 = data[version1_start:version1_end].decode("windows-1251")
+
+        # Извлечение локализации
+        locale_length = int.from_bytes(data[version1_end:version1_end + 4], "little")
+        locale_start = version1_end + 4
+        locale_end = locale_start + locale_length
+        locale = data[locale_start:locale_end].decode("windows-1251")
+
+        # Извлечение DWORD ???
+        unknown_dword2_start = locale_end
+        unknown_dword2_end = locale_end + 4
+        unknown_dword2 = int.from_bytes(data[unknown_dword2_start:unknown_dword2_end], "little")
+
+        # Извлечение DWORD ???
+        unknown_dword3_start = unknown_dword2_end
+        unknown_dword3_end = unknown_dword2_end + 4
+        unknown_dword3 = int.from_bytes(data[unknown_dword3_start:unknown_dword3_end], "little")
+
+        # geo-list ???
+        geolist_length = int.from_bytes(data[unknown_dword3_end:unknown_dword3_end + 4], "little")
+        geolist_start = unknown_dword3_end + 4
+        geolist_end = geolist_start + geolist_length
+        geolist = data[geolist_start:geolist_end].decode("windows-1251")
+
+        # Извлечение 2 версии
+        version2_length = int.from_bytes(data[geolist_end:geolist_end + 4], "little")
+        version2_start = geolist_end + 4
+        version2_end = version2_start + version2_length
+        version2 = data[version2_start:version2_end].decode("windows-1251")
+    else:
+        # Извлечение почты
+        email_length = int.from_bytes(data[0:4], "little")
+        email_start = 4
+        email_end = email_start + email_length
+        email = data[email_start:email_end].decode("windows-1251")
+
+        # Извлечение пароля
+        password_length = int.from_bytes(data[email_end:email_end + 4], "little")
+        password_start = email_end + 4
+        password_end = password_start + password_length
+        password = data[password_start:password_end].hex()
+
+        # Извлечение DWORD ???
+        unknown_dword1_start = password_end
+        unknown_dword1_end = password_end + 4
+        unknown_dword1 = int.from_bytes(data[unknown_dword1_start:unknown_dword1_end], "little")
+        # Извлечение 1 версии
+        version1_length = int.from_bytes(data[unknown_dword1_end:unknown_dword1_end + 4], "little")
+        version1_start = unknown_dword1_end + 4
+        version1_end = version1_start + version1_length
+        version1 = data[version1_start:version1_end].decode("windows-1251")
+
+        # Извлечение локализации
+        locale_length = int.from_bytes(data[version1_end:version1_end + 4], "little")
+        locale_start = version1_end + 4
+        locale_end = locale_start + locale_length
+        locale = data[locale_start:locale_end].decode("windows-1251")
+
+        # Извлечение DWORD ???
+        unknown_dword2_start = locale_end
+        unknown_dword2_end = locale_end + 4
+        unknown_dword2 = int.from_bytes(data[unknown_dword2_start:unknown_dword2_end], "little")
+
+        # Извлечение DWORD ???
+        unknown_dword3_start = unknown_dword2_end
+        unknown_dword3_end = unknown_dword2_end + 4
+        unknown_dword3 = int.from_bytes(data[unknown_dword3_start:unknown_dword3_end], "little")
+
+        # geo-list ???
+        geolist_length = int.from_bytes(data[unknown_dword3_end:unknown_dword3_end + 4], "little")
+        geolist_start = unknown_dword3_end + 4
+        geolist_end = geolist_start + geolist_length
+        geolist = data[geolist_start:geolist_end].decode("windows-1251")
+
+        # Извлечение 2 версии
+        version2_length = int.from_bytes(data[geolist_end:geolist_end + 4], "little")
+        version2_start = geolist_end + 4
+        version2_end = version2_start + version2_length
+        version2 = data[version2_start:version2_end].decode("windows-1251")
 
     return {
         "email": email,
@@ -297,7 +398,6 @@ async def change_status_parser(data, proto):
     xstatus_description = data[xstatus_description_start:xstatus_description_end].decode("utf-16-le")
 
     # com_support
-    # Не ебу как тут описать покороче, но эта вещь для скрытия юзер-агента, насколько я помню
     com_support = int.from_bytes(data[xstatus_description_end:xstatus_description_end + 4], "little")
 
     # Возвращаем

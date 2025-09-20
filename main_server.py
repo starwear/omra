@@ -29,7 +29,8 @@ mysql_pass = os.environ.get("mysql_pass")
 mysql_base = os.environ.get("mysql_base")
 
 # Создание контекста SSL
-context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+context.minimum_version = ssl.TLSVersion.SSLv3
 context.load_cert_chain(certfile=os.environ.get("certfile_path"), keyfile=os.environ.get("keyfile_path"))
 
 # Словарь клиентов
@@ -91,9 +92,6 @@ async def handle_client(reader, writer):
                 # Инициализация SSL
                 logger.info("Получил команду MRIM_CS_SSL от клиента {}".format(address[0], address[1]))
 
-                # Инициализируем SSL
-                await writer.start_tls(context)
-
                 # Формируем ответ
                 response = await build_header(
                     unbuilded_header.get("magic"), # Магический заголовок
@@ -102,6 +100,9 @@ async def handle_client(reader, writer):
                     MRIM_CS_SSL_ACK, # Команда
                     0 # Размер пакета без заголовка
                 )
+
+                # Инициализируем SSL
+                await writer.start_tls(context)
 
                 # Записываем ответ в сокет
                 writer.write(response)
@@ -173,7 +174,7 @@ async def handle_client(reader, writer):
 async def login3(writer, data, magic, proto, seq, connection, address):
     """Обработка пакета MRIM_CS_LOGIN3"""
     # Парсим пакет
-    parser_result = await login3_parser(data)
+    parser_result = await login3_parser(data, proto)
 
     # Получаем данные
     email = parser_result.get("email")
@@ -398,6 +399,14 @@ async def change_status(writer, connection, address, email, data, version):
     parsed_data = await change_status_parser(data, version)
 
     logger.info("Разобранный change_status: {}".format(parsed_data))
+    logger.info("Словарь с статусами: {}".format(presences))
+    # Заменяем статус в словаре
+    presences[address]["status"] = parsed_data.get("status")
+    presences[address]["xstatus_meaning"] = parsed_data.get("xstatus_meaning")
+    presences[address]["xstatus_title"] = parsed_data.get("xstatus_title")
+    presences[address]["xstatus_description"] = parsed_data.get("xstatus_description")
+    presences[address]["com_support"] = parsed_data.get("com_support")
+    logger.info("Словарь с статусами: {}".format(presences))
 
 async def main():
     """Главная функция сервера"""
