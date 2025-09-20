@@ -66,11 +66,8 @@ async def handle_client(reader, writer):
             if not data:
                 break
 
-            logger.info(data)
-
             # Парсим заголовок
             unbuilded_header = await unbuild_header(data)
-            logger.info("Разобранный заголовок: {}".format(unbuilded_header))
 
             # Обработка команд
             if unbuilded_header.get("command") == MRIM_CS_HELLO:
@@ -110,27 +107,10 @@ async def handle_client(reader, writer):
                 writer.write(response)
                 await writer.drain()
                 logger.info("Отправил команду MRIM_CS_SSL_ACK клиенту {}".format(address[0]))
-            elif unbuilded_header.get("command") == MRIM_CS_LOGIN2:
-                # test
-                # Формируем ответ
-
-                test = await create_lps("test reason")
-                test2 = len(test)
-
-                response = await build_header(
-                    unbuilded_header.get("magic"), # Магический заголовок
-                    unbuilded_header.get("proto"), # Версия протокола
-                    unbuilded_header.get("seq") + 1, # Очередь пакета
-                    MRIM_CS_LOGIN_REJ, # Команда
-                    test2 # Размер пакета без заголовка
-                ) + test
-                writer.write(response)
-                await writer.drain()
-                writer.close()
-                await writer.wait_closed()
             elif unbuilded_header.get("command") == MRIM_CS_LOGIN3:
                 # Обработка MRIM_CS_LOGIN3
                 logger.info("Получил команду MRIM_CS_LOGIN3 от клиента {}".format(address[0], address[1]))
+                logger.info("Разобранный заголовок: {}".format(unbuilded_header))
 
                 # Выполняем авторизацию
                 result_auth = await login3(writer, unbuilded_header.get("other_data"), unbuilded_header.get("magic"), unbuilded_header.get("proto"), unbuilded_header.get("seq"), connection, address)
@@ -167,12 +147,13 @@ async def handle_client(reader, writer):
                     logger.info("Словарь с статусами: {}".format(presences))
                 else:
                     break
-
             elif unbuilded_header.get("command") == MRIM_CS_PING:
                 logger.info("Получил команду MRIM_CS_PING от клиента {}".format(address[0], address[1]))
             elif unbuilded_header.get("command") == MRIM_CS_CHANGE_STATUS:
                 logger.info("Получил команду MRIM_CS_CHANGE_STATUS от клиента {}".format(address[0]))
                 await change_status(writer, connection, address, email, unbuilded_header.get("other_data"), unbuilded_header.get("proto"))
+            else:
+                logger.info("Неизвестная команда {}: {}".format(hex(unbuilded_header.get("command")), unbuilded_header))
     except Exception as error:
        logger.info("Произошла ошибка: {}".format(error))
     finally:
