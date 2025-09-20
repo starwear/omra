@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# OMRA by PostDevelopers
-# Запрещено распространять без разрешения
+# OMRA by Starwear
 
 ### Взаимодействие с протоколом
 

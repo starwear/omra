@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# OMRA by PostDevelopers
+# OMRA by Starwear
 
 ### Команды протокола
 
