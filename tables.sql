@@ -17,3 +17,18 @@ CREATE TABLE `user_data` (
     `groups` TEXT NOT NULL,
     `contacts` TEXT NOT NULL
 );
+
+-- Таблица с анкетами пользователей
+CREATE TABLE `anketa` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `email` TEXT NOT NULL,
+    `username` TEXT NOT NULL,
+    `domain` TEXT NOT NULL,
+    `firstname` TEXT,
+    `lastname` TEXT,
+    `location` TEXT,
+    `birthday` TEXT,
+    `zodiac` TEXT,
+    `phone` TEXT,
+    `sex` TEXT
+);

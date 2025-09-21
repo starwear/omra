@@ -102,3 +102,21 @@ MRIM_CS_USER_STATUS = 0x100F # S -> C
     # LPS -> user email
     # UL -> com support
     # LPS -> user_agent
+
+### Поиск
+MRIM_CS_WP_REQUEST = 0x1029 # C -> S
+    # UL -> field
+MRIM_CS_WP_REQUEST_PARAM_USER = 0
+MRIM_CS_WP_REQUEST_PARAM_DOMAIN = 1
+    # LPS -> value
+MRIM_CS_ANKETA_INFO = 0x1028 # S -> C
+    # UL -> status
+MRIM_ANKETA_INFO_STATUS_OK = 1
+MRIM_ANKETA_INFO_STATUS_NOUSER = 0
+MRIM_ANKETA_INFO_STATUS_DBERR = 2
+MRIM_ANKETA_INFO_STATUS_RATELIMERR = 3
+    # UL -> fields num
+    # UL -> max rows
+    # UL -> server time (unix)
+    # Fields
+    # Values

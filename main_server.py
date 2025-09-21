@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
-# OMRA by PostDevelopers
+# OMRA by Starwear
 
 # Импортируем библиотеки
-import asyncio, os, logging, ssl, hashlib, aiomysql, json
+import asyncio, os, logging, ssl, hashlib, aiomysql, json, time
 from dotenv import load_dotenv
 
 # Импортируем реализацию
@@ -231,7 +231,10 @@ async def handle_client(reader, writer):
                 logger.info("Получил команду MRIM_CS_PING от клиента {}".format(address[0], address[1]))
             elif unbuilded_header.get("command") == MRIM_CS_CHANGE_STATUS:
                 logger.info("Получил команду MRIM_CS_CHANGE_STATUS от клиента {}".format(address[0]))
-                await change_status(writer, connection, address, email, unbuilded_header.get("other_data"), unbuilded_header.get("proto"), unbuilded_header.get("magic"), unbuilded_header.get("seq"))
+                await change_status(connection, address, email, unbuilded_header.get("other_data"), unbuilded_header.get("proto"), unbuilded_header.get("seq"))
+            elif unbuilded_header.get("command") == MRIM_CS_WP_REQUEST:
+                logger.info("Получил команду MRIM_CS_WP_REQUEST от клиента {}".format(address[0]))
+                await wp_request(writer, connection, address, unbuilded_header.get("other_data"), unbuilded_header.get("magic"), unbuilded_header.get("proto"), unbuilded_header.get("seq"))
             else:
                 logger.info("Неизвестная команда {}: {}".format(hex(unbuilded_header.get("command")), unbuilded_header))
     except Exception as error:
@@ -562,11 +565,22 @@ async def contact_list(writer, groups, contacts, address, magic, proto, seq, con
                 await cursor.execute("SELECT * FROM user_data WHERE email = %s", (contact.get("email"),))
                 result_account_data = await cursor.fetchone()
 
+            # Получаем номер пользователя
+            async with connection.cursor(aiomysql.DictCursor) as cursor:
+                await cursor.execute("SELECT phone FROM anketa WHERE email = %s", (contact.get("email"),))
+                result_anketa_data = await cursor.fetchone()
+
             # Выставляем никнейм контакта
             if result_account_data is None:
                 contact_nickname = "[deleted]"
             else:
                 contact_nickname = result_account_data.get("nickname")
+
+            # Извлечение номера телефона
+            phone = result_anketa_data.get("phone")
+
+            if phone is None:
+                phone = ""
 
             # Статус
             xstatus_meaning = ""
@@ -592,7 +606,7 @@ async def contact_list(writer, groups, contacts, address, magic, proto, seq, con
             contacts_list += await create_lps(contact_nickname, "utf-16-le") # nickname
             contacts_list += await create_ul(contact.get("authorized")) # authorized
             contacts_list += await create_ul(status_num) # status
-            contacts_list += await create_lps("") # phone
+            contacts_list += await create_lps(phone) # phone
             contacts_list += await create_lps(xstatus_meaning) # xstatus meaning
             contacts_list += await create_lps(xstatus_title, "utf-16-le") # xstatus title
             contacts_list += await create_lps(xstatus_desc, "utf-16-le") # xstatus description
@@ -622,11 +636,22 @@ async def contact_list(writer, groups, contacts, address, magic, proto, seq, con
                 await cursor.execute("SELECT * FROM user_data WHERE email = %s", (contact.get("email"),))
                 result_account_data = await cursor.fetchone()
 
+            # Получаем номер пользователя
+            async with connection.cursor(aiomysql.DictCursor) as cursor:
+                await cursor.execute("SELECT phone FROM anketa WHERE email = %s", (contact.get("email"),))
+                result_anketa_data = await cursor.fetchone()
+
             # Выставляем никнейм контакта
             if result_account_data is None:
                 contact_nickname = "[deleted]"
             else:
                 contact_nickname = result_account_data.get("nickname")
+
+            # Извлечение номера телефона
+            phone = result_anketa_data.get("phone")
+
+            if phone is None:
+                phone = ""
 
             # Статус
             status_num = 0
@@ -644,7 +669,7 @@ async def contact_list(writer, groups, contacts, address, magic, proto, seq, con
             contacts_list += await create_lps(contact_nickname) # nickname
             contacts_list += await create_ul(contact.get("authorized")) # authorized
             contacts_list += await create_ul(status_num) # status
-            contacts_list += await create_lps("") # phone
+            contacts_list += await create_lps(phone) # phone
     elif proto in [65543]:
         # Выставляем нужную маску
         contacts_mask = await create_lps("uussuu")
@@ -699,7 +724,7 @@ async def contact_list(writer, groups, contacts, address, magic, proto, seq, con
     await writer.drain()
     logger.info("Отправил команду MRIM_CS_CONTACT_LIST2 клиенту {}".format(address[0]))
 
-async def change_status(writer, connection, address, email, data, version, magic, seq,):
+async def change_status(connection, address, email, data, version, seq):
     """Смена статуса пользователем"""
     # Получаем данные о аккаунте пользователя
     async with connection.cursor(aiomysql.DictCursor) as cursor:
@@ -736,7 +761,7 @@ async def change_status(writer, connection, address, email, data, version, magic
                     response = await build_header(
                         client.get("magic"),
                         client.get("proto"),
-                        seq + 1,
+                        1,
                         MRIM_CS_USER_STATUS,
                         len(response)
                     ) + response
@@ -744,6 +769,169 @@ async def change_status(writer, connection, address, email, data, version, magic
                     client.get("writer").write(response)
                     await client.get("writer").drain()
                     logger.info(f"Отправил пакет MRIM_CS_USER_STATUS пользователю {client.get("email")}")
+
+async def wp_request(writer, connection, address, data, magic, proto, seq):
+    """Обработка MRIM_CS_WP_REQUEST (поиск)"""
+    # Парсим данные
+    parsed_data = await wp_request_parser(data, proto)
+
+    email_parts = {}
+
+    for value in parsed_data:
+        if value.get("field") == MRIM_CS_WP_REQUEST_PARAM_USER:
+            email_parts["login"] = value.get("value")
+        elif value.get("field") == MRIM_CS_WP_REQUEST_PARAM_DOMAIN:
+            email_parts["domain"] = value.get("value")
+        else:
+            return
+    
+    email = f"{email_parts.get("login")}@{email_parts.get("domain")}"
+
+    # Получаем данные о аккаунте пользователя
+    async with connection.cursor(aiomysql.DictCursor) as cursor:
+        await cursor.execute("SELECT * FROM user_data WHERE email = %s", (email,))
+        result_account_data = await cursor.fetchone()
+
+    # Получаем анкету пользователя
+    async with connection.cursor(aiomysql.DictCursor) as cursor:
+        await cursor.execute("SELECT * FROM anketa WHERE email = %s", (email,))
+        result_anketa_data = await cursor.fetchone()
+
+    # Если пользователя не существует
+    if result_account_data is None or result_anketa_data is None:
+        # Формируем пакет
+        status = await create_ul(MRIM_ANKETA_INFO_STATUS_NOUSER)
+        count_rows = await create_ul(0)
+        max_rows = await create_ul(10)
+        current_time = await create_ul(int(time.time()))
+
+        # Собираем данные пакета
+        result = status + count_rows + max_rows + current_time
+
+        # Размер пакета без заголовка
+        size = len(result)
+
+        # Собираем пакет
+        response = await build_header(
+            magic,
+            proto,
+            seq,
+            MRIM_CS_ANKETA_INFO,
+            size
+        ) + result
+
+        # Записываем ответ в сокет
+        writer.write(response)
+        await writer.drain()
+        logger.info(f"Отправил команду MRIM_CS_ANKETA_INFO клиенту {address[0]}")
+    else:
+        # Итоговая анкета пользователя
+        anketa_result = b''
+        anketa_header_result = b''
+
+        # Заголовок ответа
+        status = MRIM_ANKETA_INFO_STATUS_OK
+        count_rows = 0
+        max_rows = 10
+        current_time = int(time.time())
+
+        ### Сборка анкеты
+
+        # Извлечение данных о анкете
+        username = result_anketa_data.get("username")
+        nickname = result_account_data.get("nickname")
+        domain = result_anketa_data.get("domain")
+        firstname = result_anketa_data.get("firstname")
+        lastname = result_anketa_data.get("lastname")
+        location = result_anketa_data.get("location")
+        birthday = result_anketa_data.get("birthday")
+        zodiac = result_anketa_data.get("zodiac")
+        phone = result_anketa_data.get("phone")
+        sex = result_anketa_data.get("sex")
+
+        # Извлечение юзернейма
+        anketa_header_result += await create_lps("Username")
+        anketa_result += await create_lps(username)
+        count_rows += 1
+
+        # Извлечение никнейма
+        anketa_header_result += await create_lps("Nickname")
+        if nickname:
+            anketa_result += await create_lps(nickname)
+        else:
+            anketa_result += await create_lps(email)
+        count_rows += 1
+
+        # Извлечение домена
+        anketa_header_result += await create_lps("Domain")
+        anketa_result += await create_lps(domain)
+        count_rows += 1
+
+        # Добавление имени, если есть
+        if firstname:
+            anketa_header_result += await create_lps("FirstName")
+            anketa_result += await create_lps(firstname)
+            count_rows += 1
+
+        # Добавление фамилии, есть есть
+        if lastname:
+            anketa_header_result += await create_lps("LastName")
+            anketa_result += await create_lps(lastname)
+            count_rows += 1
+
+        # Добавление города, если есть
+        if location:
+            anketa_header_result += await create_lps("Location")
+            anketa_result += await create_lps(location)
+            count_rows += 1
+
+        # Добавление дня рождения, если есть
+        if birthday:
+            anketa_header_result += await create_lps("Birthday")
+            anketa_result += await create_lps(birthday)
+            count_rows += 1
+        
+        # Добавление знака зодиака, если есть
+        if zodiac:
+            anketa_header_result += await create_lps("Zodiac")
+            anketa_result += await create_lps(zodiac)
+            count_rows += 1
+
+        # Добавление номера телефона, если есть
+        if phone:
+            anketa_header_result += await create_lps("Phone")
+            anketa_result += await create_lps(phone)
+            count_rows += 1
+
+        # Добавление пола, если есть
+        if sex:
+            anketa_header_result += await create_lps("Sex")
+            anketa_result += await create_lps(sex)
+            count_rows += 1
+
+        status = await create_ul(status)
+        count_rows = await create_ul(count_rows)
+        max_rows = await create_ul(max_rows)
+        current_time = await create_ul(current_time)
+
+        ### Итоговые данные пакета
+        result = status + count_rows + max_rows + current_time + anketa_header_result + anketa_result
+
+        # Размер пакета без заголовка
+        size = len(result)
+
+        # Собираем пакет
+        response = await build_header(
+            magic,
+            proto,
+            seq,
+            MRIM_CS_ANKETA_INFO,
+            size
+        ) + result
+
+        writer.write(response)
+        await writer.drain()
+        logger.info(f"Отправил команду MRIM_CS_ANKETA_INFO клиенту {address[0]}")
 
 async def main():
     """Главная функция сервера"""

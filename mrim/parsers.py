@@ -520,3 +520,29 @@ async def change_status_parser(data, proto):
             "xstatus_description": "",
             "com_support": 0
         }
+
+async def wp_request_parser(data, proto):
+    """Парсер MRIM_CS_WP_REQUEST"""
+    offset = 0
+    result = []
+
+    for _ in range(2):
+        field = int.from_bytes(data[offset:offset+4], "little")
+        offset += 4
+
+        value_length = int.from_bytes(data[offset:offset+4], "little")
+        offset += 4
+
+        value_start = offset 
+        value_end = value_start + value_length
+        value = data[value_start:value_end]
+        offset += value_length
+
+        result.append(
+            {
+                "field": field,
+                "value": value.decode("windows-1251")
+            }
+        )
+
+    return result
