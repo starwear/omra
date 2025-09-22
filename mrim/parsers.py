@@ -546,3 +546,90 @@ async def wp_request_parser(data, proto):
         )
 
     return result
+
+async def add_contact_parser(data, proto):
+    flags = int.from_bytes(data[0:4], "little")
+    group_id = int.from_bytes(data[4:8], "little")
+
+    contact_length = int.from_bytes(data[8:12], "little")
+    contact_start = 12
+    contact_end = contact_start + contact_length
+    contact = data[contact_start:contact_end].decode("windows-1251")
+
+    name_length = int.from_bytes(data[contact_end:contact_end + 4], "little")
+    name_start = contact_end + 4
+    name_end = name_start + name_length
+    name = data[name_start:name_end].decode("windows-1251")
+
+    unused_length = int.from_bytes(data[name_end:name_end + 4], "little")
+    unused_start = name_end + 4
+    unused_end = unused_start + unused_length
+    unused = data[unused_start:unused_end].decode("windows-1251")
+
+    return {
+        "flags": flags,
+        "group_id": group_id,
+        "contact": contact,
+        "name": name,
+        "unused": unused
+    }
+
+async def new_message_parser(data, proto):
+    """Парсер MRIM_CS_MESSAGE"""
+    # Флаги сообщения
+    flags = int.from_bytes(data[0:4], "little")
+
+    # Получатель сообщения
+    to_length = int.from_bytes(data[4:8], "little")
+    to_start = 8
+    to_end = to_start + to_length
+    to = data[to_start:to_end].decode("windows-1251")   
+
+    # Само сообщение
+    message_length = int.from_bytes(data[to_end:to_end + 4], "little")
+    message_start = to_end + 4
+    message_end = message_start + message_length
+    message = data[message_start:message_end].decode("windows-1251")
+
+    # Сообщение в формате RTF
+    rtf_message_length = int.from_bytes(data[message_end:message_end + 4], "little")
+    rtf_message_start = message_end + 4
+    rtf_message_end = rtf_message_start + rtf_message_length
+    rtf_message = data[rtf_message_start:rtf_message_end].decode("windows-1251")
+
+    # Возвращаем
+    return {
+        "flags": flags,
+        "to": to,
+        "message": message,
+        "rtf_message": rtf_message
+    }
+
+async def recv_message_parser(data, proto):
+    """Парсер MRIM_CS_MESSAGE_RECV"""
+    # Отправитель сообщения
+    from_msg_length = int.from_bytes(data[0:4], "little")
+    from_msg_start = 4
+    from_msg_end = from_msg_start + from_msg_length
+    from_msg = data[from_msg_start:from_msg_end].decode("windows-1251")
+
+    # seq сообщения
+    msg_id = int.from_bytes(data[from_msg_end:from_msg_end + 4], "little")
+
+    return {
+        "from": from_msg,
+        "msg_id": msg_id
+    }
+
+async def authorize_parser(data, proto):
+    """Парсер пакета MRIM_CS_AUTHORIZE"""
+    # Извлечение пользователя
+    user_length = int.from_bytes(data[0:4], "little")
+    user_start = 4
+    user_end = user_start + user_length
+    user = data[user_start:user_end].decode("windows-1251")
+
+    # Возвращаем
+    return {
+        "user": user
+    }

@@ -120,3 +120,66 @@ MRIM_ANKETA_INFO_STATUS_RATELIMERR = 3
     # UL -> server time (unix)
     # Fields
     # Values
+
+### Работа с контактами
+MRIM_CS_ADD_CONTACT = 0x1019 # C -> S
+    # UL -> flags
+CONTACT_FLAG_REMOVED = 0x00000001 # Не применяется к MRIM_CS_ADD_CONTACT
+CONTACT_FLAG_GROUP = 0x00000002
+CONTACT_FLAG_GROUP_ALT = 0x1000002
+CONTACT_FLAG_INVISIBLE = 0x00000004 # "Я всегда невидим для"
+CONTACT_FLAG_VISIBLE = 0x00000008 # "Я всегда видим для"
+CONTACT_FLAG_IGNORE = 0x00000010 # Контакт в списоке игнорируемых
+CONTACT_FLAG_SHADOW	= 0x00000020
+    # UL -> group id (unused if contact is group)
+    # LPS -> contact
+    # LPS -> name
+    # LPS -> unused
+MRIM_CS_ADD_CONTACT_ACK = 0x101A # S -> C
+    # UL -> status
+CONTACT_OPER_SUCCESS = 0x0000
+CONTACT_OPER_ERROR = 0x0001
+CONTACT_OPER_INTERR = 0x0002
+CONTACT_OPER_NO_SUCH_USER = 0x0003
+CONTACT_OPER_INVALID_INFO = 0x0004
+CONTACT_OPER_USER_EXISTS = 0x0005
+CONTACT_OPER_GROUP_LIMIT = 0x6
+    # UL -> contact id or -1 if status is not OK
+
+### Сообщения
+MRIM_CS_MESSAGE = 0x1008 # C -> S
+    # UL -> flags
+MESSAGE_FLAG_OFFLINE = 0x00000001
+MESSAGE_FLAG_NORECV = 0x00000004
+MESSAGE_FLAG_AUTHORIZE = 0x00000008 # X-MRIM-Flags: 00000008
+MESSAGE_FLAG_SYSTEM = 0x00000040
+MESSAGE_FLAG_RTF = 0x00000080
+MESSAGE_FLAG_CONTACT = 0x00000200
+MESSAGE_FLAG_NOTIFY = 0x00000400
+MESSAGE_FLAG_MULTICAST = 0x00001000
+    # LPS -> to
+    # LPS -> message
+    # LPS -> rtf-formatted message
+MRIM_CS_MESSAGE_ACK = 0x1009 # S -> C
+    # UL -> msg_id
+    # UL -> flags
+    # LPS -> from
+    # LPS -> message
+    # LPS -> rtf-formatted message
+MRIM_CS_MESSAGE_RECV = 0x1011 # C -> S
+    # LPS -> from
+    # UL -> msg_id
+MRIM_CS_MESSAGE_STATUS = 0x1012 # S -> C
+    # UL -> status
+MESSAGE_DELIVERED = 0x0000 # Message delivered directly to user
+MESSAGE_REJECTED_NOUSER = 0x8001 # Message rejected - no such user
+MESSAGE_REJECTED_INTERR = 0x8003 # Internal server error
+MESSAGE_REJECTED_LIMIT_EXCEEDED = 0x8004 # Offline messages limit exceeded
+MESSAGE_REJECTED_TOO_LARGE = 0x8005 # Message is too large
+MESSAGE_REJECTED_DENY_OFFMSG = 0x8006 # User does not accept offline messages
+
+### Авторизация контактов
+MRIM_CS_AUTHORIZE = 0x1020 # C -> S
+    # LPS -> user
+MRIM_CS_AUTHORIZE_ACK = 0x1021 # S -> C
+    # LPS -> user
