@@ -673,3 +673,27 @@ async def games_parser(data, proto):
         "time_send": time_send,
         "game_data": game_data
     }
+
+async def sms_parser(data, proto):
+    """Парсер MRIM_CS_SMS"""
+    # Извлечение флагов
+    flags = int.from_bytes(data[0:4], "little")
+
+    # Извлечение телефона
+    phone_length = int.from_bytes(data[4:8], "little")
+    phone_start = 8
+    phone_end = phone_start + phone_length
+    phone = data[phone_start:phone_end].decode("windows-1251")
+
+    # Извлечение сообщения
+    message_length = int.from_bytes(data[phone_end:phone_end + 4], "little")
+    message_start = phone_end + 4
+    message_end = message_start + message_length
+    message = data[message_start:message_end].decode("windows-1251")
+
+    # Возвращаем пропаршенные данные
+    return {
+        "flags": flags,
+        "phone": phone,
+        "message": message
+    }

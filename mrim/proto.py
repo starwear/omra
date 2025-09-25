@@ -192,3 +192,15 @@ MRIM_CS_GAME = 0x1035 # C <-> S
     # UL -> msg id 
     # UL -> time send
     # LPS -> data
+
+### SMS-сообщения
+MRIM_CS_SMS = 0x1039 # C -> S
+    # UL -> flags
+    # LPS -> phone
+    # LPS -> message 
+    
+MRIM_CS_SMS_ACK = 0x1040 # S -> C
+    # UL -> status
+MRIM_SMS_OK = 1
+MRIM_SMS_SERVICE_UNAVAILABLE = 2
+MRIM_SMS_INVALID_PARAMS = 0x10000

@@ -32,3 +32,10 @@ CREATE TABLE `anketa` (
     `phone` TEXT,
     `sex` TEXT
 );
+
+-- Таблица для отправки SMS
+CREATE TABLE `sms_info` (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+    `phone` TEXT NOT NULL,
+    `telegram_id` TEXT NOT NULL
+);

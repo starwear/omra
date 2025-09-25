@@ -3,7 +3,7 @@
 # OMRA by Starwear
 
 # Импортируем библиотеки
-import asyncio, os, logging, ssl, hashlib, aiomysql, json, time
+import asyncio, os, logging, ssl, hashlib, aiomysql, json, time, aiohttp
 from dotenv import load_dotenv
 
 # Импортируем реализацию
@@ -27,6 +27,8 @@ mysql_port = int(os.environ.get("mysql_port")) # Порт mysql
 mysql_user = os.environ.get("mysql_user")
 mysql_pass = os.environ.get("mysql_pass")
 mysql_base = os.environ.get("mysql_base")
+
+telegram_bot_token = os.environ.get("telegram_bot_token")
 
 # Создание контекста SSL
 context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
@@ -250,6 +252,9 @@ async def handle_client(reader, writer):
             elif unbuilded_header.get("command") == MRIM_CS_GAME:
                 logger.info("Получил команду MRIM_CS_GAME от клиента {}".format(address[0]))
                 await games(unbuilded_header.get("other_data"), unbuilded_header.get("proto"), email)
+            elif unbuilded_header.get("command") == MRIM_CS_SMS:
+                logger.info("Получил команду MRIM_CS_SMS от клиента {}".format(address[0]))
+                await send_sms(writer, address, unbuilded_header.get("other_data"), unbuilded_header.get("magic"), unbuilded_header.get("proto"), unbuilded_header.get("seq"), connection, email)
             else:
                 logger.info("Неизвестная команда {}: {}".format(hex(unbuilded_header.get("command")), unbuilded_header))
     except Exception as error:
@@ -1283,6 +1288,59 @@ async def games(data, proto, email):
             client.get("writer").write(response)
             await client.get("writer").drain()
             logger.info("Отправил команду MRIM_CS_GAME клиенту {}".format(client.get("email")))
+
+async def send_sms(writer, address, data, magic, proto, seq, connection, email):
+    """Отправка SMS"""
+    # Парсим пакет
+    parsed_data = await sms_parser(data, proto)
+
+    # Ищем telegram id в бд
+    async with connection.cursor(aiomysql.DictCursor) as cursor:
+        await cursor.execute("SELECT * FROM sms_info WHERE phone = %s", (parsed_data.get("phone"),))
+        sms_data = await cursor.fetchone()
+
+    telegram_id = sms_data.get("telegram_id")
+
+    # Если данные есть - продолжаем отправку
+    if sms_data:
+        # Query параметры для запроса
+        query = {
+            "chat_id": telegram_id,
+            "text": f"📬 Новое сообщение от {email}:\n{parsed_data.get("message")}"
+        }
+
+        # Высылаем сообщение в Telegram
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f'https://api.telegram.org/bot{telegram_bot_token}/sendMessage', params=query) as response:
+                response_send_msg = await response.json()
+
+        # Создаем пакет
+        response = await build_header(
+            magic,
+            proto,
+            seq,
+            MRIM_CS_SMS_ACK,
+            4
+        ) + await create_ul(MRIM_SMS_OK)
+
+        # Отправляем
+        writer.write(response)
+        await writer.drain()
+        logger.info("Отправил команду MRIM_CS_SMS_ACK клиенту {}".format(address[0]))
+    else:
+        # Создаем пакет
+        response = await build_header(
+            magic,
+            proto,
+            seq,
+            MRIM_CS_SMS_ACK,
+            4
+        ) + await create_ul(MRIM_SMS_SERVICE_UNAVAILABLE)
+
+        # Отправляем
+        writer.write(response)
+        await writer.drain()
+        logger.info("Отправил команду MRIM_CS_SMS_ACK клиенту {}".format(address[0]))
 
 async def main():
     """Главная функция сервера"""
