@@ -126,7 +126,7 @@ MRIM_CS_ADD_CONTACT = 0x1019 # C -> S
     # UL -> flags
 CONTACT_FLAG_REMOVED = 0x00000001 # Не применяется к MRIM_CS_ADD_CONTACT
 CONTACT_FLAG_GROUP = 0x00000002
-CONTACT_FLAG_GROUP_ALT = 0x1000002
+CONTACT_FLAG_GROUP_ALT = [0x1000002, 0x2000002, 0x3000002, 0x4000002, 0x5000002, 0x6000002, 0x7000002, 0x8000002, 0x9000002, 0xa000002, 0xb000002, 0xc000002, 0xd000002, 0xe000002, 0xf000002, 0x10000002]
 CONTACT_FLAG_INVISIBLE = 0x00000004 # "Я всегда невидим для"
 CONTACT_FLAG_VISIBLE = 0x00000008 # "Я всегда видим для"
 CONTACT_FLAG_IGNORE = 0x00000010 # Контакт в списоке игнорируемых
@@ -183,3 +183,12 @@ MRIM_CS_AUTHORIZE = 0x1020 # C -> S
     # LPS -> user
 MRIM_CS_AUTHORIZE_ACK = 0x1021 # S -> C
     # LPS -> user
+
+### Игры
+MRIM_CS_GAME = 0x1035 # C <-> S
+    # LPS -> to / from email
+    # UL -> session id
+    # UL -> game msg
+    # UL -> msg id 
+    # UL -> time send
+    # LPS -> data

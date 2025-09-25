@@ -633,3 +633,43 @@ async def authorize_parser(data, proto):
     return {
         "user": user
     }
+
+async def games_parser(data, proto):
+    offset = 0
+
+    # Извлечение почты, кому адресован пакет
+    email_length = int.from_bytes(data[0:4], "little")
+    email_start = 4
+    email_end = email_start + email_length
+    email = data[email_start:email_end].decode("windows-1251")
+
+    offset += email_end
+
+    # Уникальный ID сессии
+    session_id = int.from_bytes(data[offset:offset + 4], "little")
+    offset += 4
+
+    # Сообщение
+    game_msg = int.from_bytes(data[offset:offset + 4], "little")
+    offset += 4
+
+    # ID сообщения
+    msg_id = int.from_bytes(data[offset:offset + 4], "little")
+    offset += 4
+
+    # Время отправки
+    time_send = int.from_bytes(data[offset:offset + 4], "little")
+    offset += 4
+
+    # Игровые данные
+    game_data = data[offset:]
+
+    # Возвращение пропаршенных данных
+    return {
+        "email": email,
+        "session_id": session_id,
+        "game_msg": game_msg,
+        "msg_id": msg_id,
+        "time_send": time_send,
+        "game_data": game_data
+    }
