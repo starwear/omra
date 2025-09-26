@@ -288,8 +288,11 @@ async def handle_client(reader, writer):
         # Если пользователь авторизован, рассылаем всем контактам статус офлайн
         if email:
             # Удаляем пользователя из словарей
-            del clients[address]
-            del presences[address]
+            try:
+                del clients[address]
+                del presences[address]
+            except:
+                pass
 
             # Получаем данные о аккаунте пользователя
             async with connection.cursor(aiomysql.DictCursor) as cursor:
@@ -354,8 +357,6 @@ async def login2(writer, data, magic, proto, seq, connection, address):
     """Обработка пакета MRIM_CS_LOGIN2"""
     # Парсим пакет
     parser_result = await login2_parser(data, proto)
-
-    print(parser_result)
 
     # Получаем данные
     email = parser_result.get("email")
