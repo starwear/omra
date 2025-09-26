@@ -279,7 +279,7 @@ async def login2_parser(data, proto):
             "com_support": com_support,
             "version1": version1,
             "version2": version2,
-            "language": language
+            "language": "ru"
         }
     elif proto in [65552, 65554, 65555]:
         # Извлечение почты
@@ -468,6 +468,45 @@ async def change_status_parser(data, proto):
             "xstatus_title": "",
             "xstatus_description": "",
             "com_support": 0
+        }
+    elif proto in [65551]:
+        # Извлекаем числовой статус
+        status = int.from_bytes(data[0:4], "little")
+
+        # Извлекаем длину значения хстатуса
+        xstatus_meaning_length = int.from_bytes(data[4:8], "little")
+
+        # Извлекаем значение хстатуса
+        xstatus_meaning_start = 8
+        xstatus_meaning_end = xstatus_meaning_start + xstatus_meaning_length
+        xstatus_meaning = data[xstatus_meaning_start:xstatus_meaning_end].decode('windows-1251')
+
+        # Извлечение длины заголовка хстатуса 
+        xstatus_title_length = int.from_bytes(data[xstatus_meaning_end:xstatus_meaning_end + 4], "little")
+
+        # Извлечение заголовка статуса
+        xstatus_title_start = xstatus_meaning_end + 4
+        xstatus_title_end = xstatus_title_start + xstatus_title_length
+        xstatus_title = data[xstatus_title_start:xstatus_title_end].decode('windows-1251')
+
+        # Извлечение длины описания хстатуса
+        xstatus_description_length = int.from_bytes(data[xstatus_title_end:xstatus_title_end + 4], "little")
+
+        # Извлечение описания хстатуса
+        xstatus_description_start = xstatus_title_end + 4
+        xstatus_description_end = xstatus_description_start + xstatus_description_length
+        xstatus_description = data[xstatus_description_start:xstatus_description_end].decode('windows-1251')
+
+        # com_support
+        com_support = int.from_bytes(data[xstatus_description_end:xstatus_description_end + 4], "little")
+
+        # Возвращаем
+        return {
+            "status": status,
+            "xstatus_meaning": xstatus_meaning,
+            "xstatus_title": xstatus_title,
+            "xstatus_description": xstatus_description,
+            "com_support": com_support
         }
     elif proto in [65559]:
         # Извлекаем числовой статус
