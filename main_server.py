@@ -1449,10 +1449,11 @@ async def send_sms(writer, address, data, magic, proto, seq, connection, email):
         await cursor.execute("SELECT * FROM sms_info WHERE phone = %s", (parsed_data.get("phone"),))
         sms_data = await cursor.fetchone()
 
-    telegram_id = sms_data.get("telegram_id")
-
     # Если данные есть - продолжаем отправку
     if sms_data:
+        # TG ID получателя
+        telegram_id = sms_data.get("telegram_id")
+
         # Query параметры для запроса
         query = {
             "chat_id": telegram_id,

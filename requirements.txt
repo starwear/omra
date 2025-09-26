@@ -1,0 +1,5 @@
+aiomysql
+quart
+aiohttp
+python-dotenv
+pillow
