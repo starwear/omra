@@ -508,7 +508,7 @@ async def change_status_parser(data, proto):
             "xstatus_description": xstatus_description,
             "com_support": com_support
         }
-    elif proto in [65559]:
+    elif proto in [65552, 65554, 65555, 65556, 65557, 65558, 65559]:
         # Извлекаем числовой статус
         status = int.from_bytes(data[0:4], "little")
 
@@ -598,7 +598,10 @@ async def add_contact_parser(data, proto):
     name_length = int.from_bytes(data[contact_end:contact_end + 4], "little")
     name_start = contact_end + 4
     name_end = name_start + name_length
-    name = data[name_start:name_end].decode("windows-1251")
+    if proto in [65552, 65554, 65555]:
+        name = data[name_start:name_end].decode("utf-16-le")
+    else:
+        name = data[name_start:name_end].decode("windows-1251")
 
     unused_length = int.from_bytes(data[name_end:name_end + 4], "little")
     unused_start = name_end + 4
@@ -628,7 +631,14 @@ async def new_message_parser(data, proto):
     message_length = int.from_bytes(data[to_end:to_end + 4], "little")
     message_start = to_end + 4
     message_end = message_start + message_length
-    message = data[message_start:message_end].decode("windows-1251")
+
+    try:
+        if flags in [12]:
+            message = data[message_start:message_end].decode("windows-1251")
+        else:
+            message = data[message_start:message_end].decode("utf-16-le")
+    except:
+        message = data[message_start:message_end].decode("windows-1251")
 
     # Сообщение в формате RTF
     rtf_message_length = int.from_bytes(data[message_end:message_end + 4], "little")
@@ -728,7 +738,10 @@ async def sms_parser(data, proto):
     message_length = int.from_bytes(data[phone_end:phone_end + 4], "little")
     message_start = phone_end + 4
     message_end = message_start + message_length
-    message = data[message_start:message_end].decode("windows-1251")
+    if proto in [65552, 65554, 65555, 65556, 65557, 65558, 65559]:
+        message = data[message_start:message_end].decode("utf-16-le")
+    else:
+        message = data[message_start:message_end].decode("windows-1251")
 
     # Возвращаем пропаршенные данные
     return {

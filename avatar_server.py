@@ -36,19 +36,14 @@ async def get_avatar(domain, username, type):
         empty_avatar = await create_empty_avatar(1)
 
         # Создаем ответ
-        if request.method == 'GET':
-            response = await make_response(
-                await send_file(
-                    filename_or_io=empty_avatar,
-                    mimetype='image/jpeg',
-                    conditional=True,
-                    as_attachment=False
-                )
+        response = await make_response(
+            await send_file(
+                filename_or_io=empty_avatar,
+                mimetype='image/jpeg',
+                conditional=True,
+                as_attachment=False
             )
-        elif request.method == 'HEAD':
-            response = await make_response()
-        else:
-            return "Bad Request", 400
+        )
 
         # Дата истечения аватарки
         expires = datetime.now() + timedelta(days=7)
@@ -57,9 +52,10 @@ async def get_avatar(domain, username, type):
         headers = {
             'Connection': 'keep-alive',
             'Cache-Control': 'max-age=604800',
-            'Last-Modified': formatdate(time.time(), localtime=True),
-            'Expires': formatdate(expires.timestamp(), localtime=True),
-            'X-NoImage': '1'
+            'Last-Modified': formatdate(time.time(), localtime=False),
+            'Expires': formatdate(expires.timestamp(), localtime=False),
+            'X-NoImage': '1',
+            'Content-Type': 'image/jpeg'
         }
 
         response.headers.update(headers)
@@ -80,29 +76,25 @@ async def get_avatar(domain, username, type):
         headers = {
             'Connection': 'keep-alive',
             'Cache-Control': 'max-age=604800',
-            'Last-Modified': formatdate(os.path.getmtime(path), localtime=True),
-            'Expires': formatdate(expires.timestamp(), localtime=True)
+            'Last-Modified': formatdate(os.path.getmtime(path), localtime=False),
+            'Expires': formatdate(expires.timestamp(), localtime=False),
+            'Content-Type': 'image/jpeg'
         }
 
         # Создаем ответ
-        if request.method == 'GET':
-            response = await make_response(
-                await send_file(
-                    filename_or_io=buf,
-                    mimetype='image/jpeg',
-                    conditional=True,
-                    as_attachment=False
-                )
+        response = await make_response(
+            await send_file(
+                filename_or_io=buf,
+                mimetype='image/jpeg',
+                conditional=True,
+                as_attachment=False
             )
-        elif request.method == 'HEAD':
-            response = await make_response()
-        else:
-            return "Bad Request", 400
+        )
         
         response.headers.update(headers)
         return response
 
-
 app.run(
+    host=os.environ.get("avatars_host"),
     port=os.environ.get("avatars_port")
 )
