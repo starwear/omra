@@ -785,7 +785,7 @@ async def contact_list(writer, groups, contacts, address, magic, proto, seq, con
 
         # Костыли 1 часть
         if "QIP" in user_agent:
-            encoding = "cp1252"
+            encoding = "windows-1251"
         else:
             encoding = "utf-16-le"
 
