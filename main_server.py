@@ -3,7 +3,7 @@
 # OMRA by Starwear
 
 # Импортируем библиотеки
-import asyncio, os, logging, ssl, hashlib, aiomysql, json, time, aiohttp
+import asyncio, os, logging, hashlib, aiomysql, json, time, aiohttp
 from dotenv import load_dotenv
 
 # Импортируем реализацию
@@ -29,12 +29,6 @@ mysql_pass = os.environ.get("mysql_pass")
 mysql_base = os.environ.get("mysql_base")
 
 telegram_bot_token = os.environ.get("telegram_bot_token")
-
-# Создание контекста SSL
-context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-context.minimum_version = ssl.TLSVersion.SSLv3
-context.set_ciphers('ALL:@SECLEVEL=0')
-context.options |= ssl.OP_ALL
 
 # Словарь клиентов
 clients = {}
@@ -91,30 +85,6 @@ async def handle_client(reader, writer):
                 writer.write(response)
                 await writer.drain()
                 logger.info("Отправил команду MRIM_CS_HELLO_ACK клиенту {}".format(address[0]))
-            elif unbuilded_header.get("command") == MRIM_CS_SSL:
-                # Инициализация SSL
-                logger.info("Получил команду MRIM_CS_SSL от клиента {}".format(address[0], address[1]))
-
-                # Формируем ответ
-                response = await build_header(
-                    unbuilded_header.get("magic"), # Магический заголовок
-                    unbuilded_header.get("proto"), # Версия протокола
-                    unbuilded_header.get("seq") + 1, # Очередь пакета
-                    MRIM_CS_SSL_ACK, # Команда
-                    0 # Размер пакета без заголовка
-                )
-
-                # Инициализируем SSL
-                try:
-                    await writer.start_tls(context)
-                except Exception as error:
-                    logger.info(f"Ошибка SSL: {error}")
-                    break 
-                finally:
-                    # Записываем ответ в сокет
-                    writer.write(response)
-                    await writer.drain()
-                    logger.info("Отправил команду MRIM_CS_SSL_ACK клиенту {}".format(address[0]))
             elif unbuilded_header.get("command") == MRIM_CS_LOGIN2:
                 # Обработка MRIM_CS_LOGIN2
                 logger.info("Получил команду MRIM_CS_LOGIN2 от клиента {}".format(address[0], address[1]))

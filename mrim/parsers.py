@@ -632,12 +632,15 @@ async def new_message_parser(data, proto):
     message_start = to_end + 4
     message_end = message_start + message_length
 
-    try:
+    if proto in [65552, 65554, 65555, 65556, 65557, 65558, 65559]:
         if flags in [12]:
             message = data[message_start:message_end].decode("windows-1251")
         else:
-            message = data[message_start:message_end].decode("utf-16-le")
-    except:
+            try:
+                message = data[message_start:message_end].decode("utf-16-le")
+            except:
+                message = data[message_start:message_end].decode("windows-1251")
+    else:
         message = data[message_start:message_end].decode("windows-1251")
 
     # Сообщение в формате RTF

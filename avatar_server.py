@@ -1,11 +1,12 @@
-import os, io, time
-from quart import Quart, request, make_response, send_file
+import os
+import io
+import time
+from datetime import datetime, timedelta
+from email.utils import formatdate
+
+from aiohttp import web
 from dotenv import load_dotenv
 from PIL import Image
-from email.utils import formatdate
-from datetime import datetime, timedelta, timezone
-
-app = Quart(__name__)
 
 # Загружаем конфигурацию сервера
 load_dotenv()
@@ -19,31 +20,24 @@ async def create_empty_avatar(size: int):
     buf.seek(0)
     return buf
 
-@app.route('/<domain>/<username>/<type>', methods=['GET', 'HEAD'])
-async def get_avatar(domain, username, type):
-    if type == "_mrimavatar" or type == "_avatar":
+async def get_avatar(request):
+    domain = request.match_info['domain']
+    username = request.match_info['username']
+    type_avatar = request.match_info['type']
+    
+    if type_avatar == "_mrimavatar" or type_avatar == "_avatar":
         size = 90
-    elif type == "_mrimavatarsmall":
+    elif type_avatar == "_mrimavatarsmall":
         size = 45
     else:
-        return "Bad Request", 400
+        return web.Response(text="Bad Request", status=400)
 
     file_name = f"{username}_{domain}.jpg"
-    path = AVATARS_PATH + file_name
+    path = os.path.join(AVATARS_PATH, file_name)
 
     if not os.path.isfile(path):
         # Создаем пустышку
         empty_avatar = await create_empty_avatar(1)
-
-        # Создаем ответ
-        response = await make_response(
-            await send_file(
-                filename_or_io=empty_avatar,
-                mimetype='image/jpeg',
-                conditional=True,
-                as_attachment=False
-            )
-        )
 
         # Дата истечения аватарки
         expires = datetime.now() + timedelta(days=7)
@@ -55,11 +49,10 @@ async def get_avatar(domain, username, type):
             'Last-Modified': formatdate(time.time(), localtime=False),
             'Expires': formatdate(expires.timestamp(), localtime=False),
             'X-NoImage': '1',
-            'Content-Type': 'image/jpeg'
         }
 
-        response.headers.update(headers)
-        return response
+        return web.Response(body=empty_avatar.getvalue(), status=200, headers=headers, content_type='image/jpeg')
+
     else:
         # Ресайзим картинку
         with Image.open(path) as img:
@@ -72,29 +65,17 @@ async def get_avatar(domain, username, type):
         # Дата истечения аватарки
         expires = datetime.now() + timedelta(days=7)
 
-        # Заголовки
         headers = {
             'Connection': 'keep-alive',
             'Cache-Control': 'max-age=604800',
             'Last-Modified': formatdate(os.path.getmtime(path), localtime=False),
             'Expires': formatdate(expires.timestamp(), localtime=False),
-            'Content-Type': 'image/jpeg'
         }
 
-        # Создаем ответ
-        response = await make_response(
-            await send_file(
-                filename_or_io=buf,
-                mimetype='image/jpeg',
-                conditional=True,
-                as_attachment=False
-            )
-        )
-        
-        response.headers.update(headers)
-        return response
+        return web.Response(body=buf.getvalue(), status=200, headers=headers, content_type='image/jpeg')
 
-app.run(
-    host=os.environ.get("avatars_host"),
-    port=os.environ.get("avatars_port")
-)
+app = web.Application()
+app.router.add_get('/{domain}/{username}/{type}', get_avatar)
+
+if __name__ == '__main__':
+    web.run_app(app, host=os.environ.get("avatars_host"), port=int(os.environ.get("avatars_port")))
