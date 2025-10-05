@@ -43,6 +43,8 @@ async def handle_client(reader, writer):
 
     # Настройки подключения
     email = None # Почта пользователя
+    greeted = False # Приветствовал ли клиент сервер
+    authorized = False # Авторизация
 
     logger.info("Работаю с клиентом: {}".format(address[0]))
 
@@ -72,6 +74,10 @@ async def handle_client(reader, writer):
                 # Приветствие клиента
                 logger.info("Получил команду MRIM_CS_HELLO от клиента {}".format(address[0], address[1]))
                 
+                # Проверка приветствия
+                if greeted == True:
+                    break
+
                 # Собираем ответ
                 response = await build_header(
                     unbuilded_header.get("magic"), # Магический заголовок
@@ -81,6 +87,9 @@ async def handle_client(reader, writer):
                     4 # Размер пакета без заголовка
                 ) + await create_ul(30) # keep-alive
 
+                # Отмечаем в переменной приветствие
+                greeted = True
+
                 # Записываем ответ в сокет
                 writer.write(response)
                 await writer.drain()
@@ -89,6 +98,10 @@ async def handle_client(reader, writer):
                 # Рукопожатие SSL
                 logger.info("Получил команду MRIM_CS_SSL от клиента {}".format(address[0], address[1]))
                 
+                # Проверка приветствия
+                if greeted == False:
+                    break
+
                 # Собираем ответ
                 response = await build_header(
                     unbuilded_header.get("magic"), # Магический заголовок
@@ -112,7 +125,10 @@ async def handle_client(reader, writer):
             elif unbuilded_header.get("command") == MRIM_CS_LOGIN2:
                 # Обработка MRIM_CS_LOGIN2
                 logger.info("Получил команду MRIM_CS_LOGIN2 от клиента {}".format(address[0], address[1]))
-                logger.info("Разобранный заголовок: {}".format(unbuilded_header))
+
+                # Проверка приветствия и авторизации
+                if greeted == False or authorized == True:
+                    break
 
                 # Выполняем авторизацию
                 result_auth = await login2(writer, unbuilded_header.get("other_data"), unbuilded_header.get("magic"), unbuilded_header.get("proto"), unbuilded_header.get("seq"), connection, address)
@@ -121,6 +137,7 @@ async def handle_client(reader, writer):
                 if result_auth.get("result") == "success":
                     email = result_auth.get("email")
                     presence_setted = False # Установлен ли статус клиента в словаре
+                    authorized = True # Отмечаем в переменной авторизацию
 
                     clients[address] = {
                         "writer": writer,
@@ -222,7 +239,10 @@ async def handle_client(reader, writer):
             elif unbuilded_header.get("command") == MRIM_CS_LOGIN3:
                 # Обработка MRIM_CS_LOGIN3
                 logger.info("Получил команду MRIM_CS_LOGIN3 от клиента {}".format(address[0], address[1]))
-                logger.info("Разобранный заголовок: {}".format(unbuilded_header))
+
+                # Проверка приветствия и авторизации
+                if greeted == False or authorized == True:
+                    break
 
                 # Выполняем авторизацию
                 result_auth = await login3(writer, unbuilded_header.get("other_data"), unbuilded_header.get("magic"), unbuilded_header.get("proto"), unbuilded_header.get("seq"), connection, address)
@@ -231,6 +251,7 @@ async def handle_client(reader, writer):
                 if result_auth.get("result") == "success":
                     email = result_auth.get("email")
                     presence_setted = False # Установлен ли статус клиента в словаре
+                    authorized = True # Отмечаем в переменной авторизацию
 
                     clients[address] = {
                         "writer": writer,
@@ -257,33 +278,156 @@ async def handle_client(reader, writer):
                             "xstatus_description": "",
                             "com_support": 0x3FF
                         }
+
+                    # Получаем данные о аккаунте пользователя
+                    async with connection.cursor(aiomysql.DictCursor) as cursor:
+                        await cursor.execute("SELECT * FROM user_data WHERE email = %s", (email,))
+                        result_account_data = await cursor.fetchone()
+
+                    # Получаем контакты
+                    contacts = json.loads(result_account_data.get("contacts"))
+
+                    # Собираем пакет
+                    status = await create_ul(1)
+                    xstatus_meaning = await create_lps("STATUS_ONLINE")
+                    xstatus_title_cp1251 = await create_lps("Онлайн")
+                    xstatus_description_cp1251 = await create_lps("")
+                    xstatus_title_utf16 = await create_lps("Онлайн", "utf-16-le")
+                    xstatus_description_utf16 = await create_lps("", "utf-16-le")
+                    email_in_lps = await create_lps(email)
+                    com_support = await create_ul(0x3FF)
+                    user_agent = await create_lps("")
+
+                    # Рассылка нового статуса всем контактам
+                    for contact in contacts:
+                        for client in clients.values():
+                            if client.get("email") == contact.get("email"):
+                                if client.get("proto") in [65543, 65544, 65545, 65546, 65547, 65548, 65549]:
+                                    packet_data = status + email_in_lps
+
+                                    # Фикс прикола с 5 агентами
+                                    if result_auth.get("status") == 4:
+                                        packet_data = await create_ul(1) + email_in_lps
+
+                                    response = await build_header(
+                                        client.get("magic"),
+                                        client.get("proto"),
+                                        1,
+                                        MRIM_CS_USER_STATUS,
+                                        len(packet_data)
+                                    ) + packet_data
+
+                                    client.get("writer").write(response)
+                                    await client.get("writer").drain()
+                                    logger.info(f"Отправил пакет MRIM_CS_USER_STATUS пользователю {client.get("email")}")
+                                elif client.get("proto") in [65551]:
+                                    packet_data = status + xstatus_meaning + xstatus_title_cp1251 + xstatus_description_cp1251 + email_in_lps + com_support + user_agent
+
+                                    response = await build_header(
+                                        client.get("magic"),
+                                        client.get("proto"),
+                                        1,
+                                        MRIM_CS_USER_STATUS,
+                                        len(packet_data)
+                                    ) + packet_data
+
+                                    client.get("writer").write(response)
+                                    await client.get("writer").drain()
+                                    logger.info(f"Отправил пакет MRIM_CS_USER_STATUS пользователю {client.get("email")}")             
+                                elif client.get("proto") in [65552, 65554, 65555, 65556, 65557, 65558, 65559]:
+                                    packet_data = status + xstatus_meaning + xstatus_title_utf16 + xstatus_description_utf16 + email_in_lps + com_support + user_agent
+
+                                    response = await build_header(
+                                        client.get("magic"),
+                                        client.get("proto"),
+                                        1,
+                                        MRIM_CS_USER_STATUS,
+                                        len(packet_data)
+                                    ) + packet_data
+
+                                    client.get("writer").write(response)
+                                    await client.get("writer").drain()
+                                    logger.info(f"Отправил пакет MRIM_CS_USER_STATUS пользователю {client.get("email")}")    
                 else:
                     break
             elif unbuilded_header.get("command") == MRIM_CS_PING:
+                # keep-alive
                 logger.info("Получил команду MRIM_CS_PING от клиента {}".format(address[0], address[1]))
+
+                # Проверка приветствия
+                if greeted == False:
+                    break
             elif unbuilded_header.get("command") == MRIM_CS_CHANGE_STATUS:
+                # Смена статуса
                 logger.info("Получил команду MRIM_CS_CHANGE_STATUS от клиента {}".format(address[0]))
+
+                # Проверка приветствия и авторизации
+                if greeted == False or authorized == False:
+                    break
+
                 await change_status(connection, address, email, unbuilded_header.get("other_data"), unbuilded_header.get("proto"))
             elif unbuilded_header.get("command") == MRIM_CS_WP_REQUEST:
+                # Поиск
                 logger.info("Получил команду MRIM_CS_WP_REQUEST от клиента {}".format(address[0]))
+
+                # Проверка приветствия и авторизации
+                if greeted == False or authorized == False:
+                    break
+
                 await wp_request(writer, connection, address, unbuilded_header.get("other_data"), unbuilded_header.get("magic"), unbuilded_header.get("proto"), unbuilded_header.get("seq"))
             elif unbuilded_header.get("command") == MRIM_CS_ADD_CONTACT:
+                # Добавление контакта
                 logger.info("Получил команду MRIM_CS_ADD_CONTACT от клиента {}".format(address[0]))
+
+                # Проверка приветствия и авторизации
+                if greeted == False or authorized == False:
+                    break
+
                 await add_contact(writer, connection, address, unbuilded_header.get("other_data"), unbuilded_header.get("magic"), unbuilded_header.get("proto"), unbuilded_header.get("seq"), email)
             elif unbuilded_header.get("command") == MRIM_CS_MESSAGE:
+                # Пакет сообщения
                 logger.info("Получил команду MRIM_CS_MESSAGE от клиента {}".format(address[0]))
+
+                # Проверка приветствия и авторизации
+                if greeted == False or authorized == False:
+                    break
+
                 await new_message(writer, connection, address, unbuilded_header.get("other_data"), unbuilded_header.get("magic"), unbuilded_header.get("proto"), unbuilded_header.get("seq"), email)
             elif unbuilded_header.get("command") == MRIM_CS_MESSAGE_RECV:
+                # Пакет о получении сообщения
                 logger.info("Получил команду MRIM_CS_MESSAGE_RECV от клиента {}".format(address[0]))
+
+                # Проверка приветствия и авторизации
+                if greeted == False or authorized == False:
+                    break
+
                 await recv_message(unbuilded_header.get("other_data"), unbuilded_header.get("proto"))
             elif unbuilded_header.get("command") == MRIM_CS_AUTHORIZE:
+                # Авторизация контакта
                 logger.info("Получил команду MRIM_CS_AUTHORIZE от клиента {}".format(address[0]))
+
+                # Проверка приветствия и авторизации
+                if greeted == False or authorized == False:
+                    break
+
                 await authorize_contact(unbuilded_header.get("other_data"), connection, unbuilded_header.get("proto"), email)
             elif unbuilded_header.get("command") == MRIM_CS_GAME:
+                # Игры
                 logger.info("Получил команду MRIM_CS_GAME от клиента {}".format(address[0]))
+
+                # Проверка приветствия и авторизации
+                if greeted == False or authorized == False:
+                    break
+
                 await games(unbuilded_header.get("other_data"), unbuilded_header.get("proto"), email)
             elif unbuilded_header.get("command") == MRIM_CS_SMS:
+                # Отправка SMS
                 logger.info("Получил команду MRIM_CS_SMS от клиента {}".format(address[0]))
+
+                # Проверка приветствия и авторизации
+                if greeted == False or authorized == False:
+                    break
+
                 await send_sms(writer, address, unbuilded_header.get("other_data"), unbuilded_header.get("magic"), unbuilded_header.get("proto"), unbuilded_header.get("seq"), connection, email)
             else:
                 logger.info("Неизвестная команда {}: {}".format(hex(unbuilded_header.get("command")), unbuilded_header))
@@ -298,10 +442,19 @@ async def handle_client(reader, writer):
             except:
                 pass
 
-            presences[email]["status"] = 0
-            presences[email]["xstatus_meaning"] = ""
-            presences[email]["xstatus_title"] = ""
-            presences[email]["xstatus_description"] = ""
+            count_sessions = 0
+
+            for client in clients.values():
+                if client.get("email") == email:
+                    count_sessions += 1
+
+            if count_sessions > 0:
+                pass
+            else:
+                presences[email]["status"] = 0
+                presences[email]["xstatus_meaning"] = ""
+                presences[email]["xstatus_title"] = ""
+                presences[email]["xstatus_description"] = ""
 
             # Получаем данные о аккаунте пользователя
             async with connection.cursor(aiomysql.DictCursor) as cursor:
@@ -365,8 +518,6 @@ async def login2(writer, data, magic, proto, seq, connection, address):
     # Парсим пакет
     parser_result = await login2_parser(data, proto)
 
-    logger.info(parser_result)
-
     # Получаем данные
     email = parser_result.get("email")
     password = parser_result.get("password")
@@ -385,12 +536,6 @@ async def login2(writer, data, magic, proto, seq, connection, address):
 
     # Хешируем пароль в md5
     hashed_password = hashlib.md5(password.encode()).hexdigest()
-
-    # Проверка на наличие данных
-    # if not email or not password or not version1 or not version2:
-    #     return {
-    #         "result": "fail"
-    #     }
   
     # Ищем аккаунт в базе данных
     async with connection.cursor(aiomysql.DictCursor) as cursor:
@@ -1391,8 +1536,6 @@ async def add_contact(writer, connection, address, data, magic, proto, seq, emai
     # Парсим пакет
     parsed_data = await add_contact_parser(data, proto)
 
-    logger.info((CONTACT_FLAG_GROUP | (len(groups) << 24)))
-
     if parsed_data.get("flags") == 0:
         """Добавление контакта"""
         # Ищем аккаунт пользователя, которого требуется добавить
@@ -1672,9 +1815,6 @@ async def authorize_contact(data, connection, proto, email):
         await cursor.execute("UPDATE user_data SET contacts = %s WHERE email = %s", (json.dumps(contacts_sender), email,))
         await connection.commit()
 
-    print(contacts)
-    print(contacts_sender)
-
     # Ищем пользователя клиент которого хочет авторизовать
     for client in clients.values():
         if client.get("email") == parsed_data.get("user"):
@@ -1733,8 +1873,6 @@ async def send_sms(writer, address, data, magic, proto, seq, connection, email):
     """Отправка SMS"""
     # Парсим пакет
     parsed_data = await sms_parser(data, proto)
-
-    print(parsed_data)
 
     # Ищем telegram id в бд
     async with connection.cursor(aiomysql.DictCursor) as cursor:

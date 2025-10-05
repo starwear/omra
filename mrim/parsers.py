@@ -351,7 +351,7 @@ async def login2_parser(data, proto):
             "version2": version2,
             "language": language
         }
-    elif proto in [65556]:
+    elif proto in [65556, 65557]:
         # Извлечение почты
         email_length = int.from_bytes(data[0:4], "little")
         email_start = 4
