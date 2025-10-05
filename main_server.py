@@ -3,7 +3,7 @@
 # OMRA by Starwear
 
 # Импортируем библиотеки
-import asyncio, os, logging, hashlib, aiomysql, json, time, aiohttp
+import asyncio, os, logging, hashlib, aiomysql, json, time, aiohttp, ssl
 from dotenv import load_dotenv
 
 # Импортируем реализацию
@@ -79,12 +79,36 @@ async def handle_client(reader, writer):
                     unbuilded_header.get("seq") + 1, # Очередь пакета
                     MRIM_CS_HELLO_ACK, # Команда
                     4 # Размер пакета без заголовка
-                ) + await create_ul(5) # keep-alive
+                ) + await create_ul(30) # keep-alive
 
                 # Записываем ответ в сокет
                 writer.write(response)
                 await writer.drain()
                 logger.info("Отправил команду MRIM_CS_HELLO_ACK клиенту {}".format(address[0]))
+            elif unbuilded_header.get("command") == MRIM_CS_SSL:
+                # Рукопожатие SSL
+                logger.info("Получил команду MRIM_CS_SSL от клиента {}".format(address[0], address[1]))
+                
+                # Собираем ответ
+                response = await build_header(
+                    unbuilded_header.get("magic"), # Магический заголовок
+                    unbuilded_header.get("proto"), # Версия протокола
+                    unbuilded_header.get("seq") + 1, # Очередь пакета
+                    MRIM_CS_SSL_ACK, # Команда
+                    0 # Размер пакета без заголовка
+                )
+
+                # Создание контекста SSL
+                context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+                context.load_cert_chain(certfile=os.environ.get("certfile_path"), keyfile=os.environ.get("keyfile_path"))
+
+                # Начинаем пиздец и ужас
+                await writer.start_tls(context)
+
+                # Записываем ответ в сокет
+                writer.write(response)
+                await writer.drain()
+                logger.info("Отправил команду MRIM_CS_SSL_ACK клиенту {}".format(address[0]))
             elif unbuilded_header.get("command") == MRIM_CS_LOGIN2:
                 # Обработка MRIM_CS_LOGIN2
                 logger.info("Получил команду MRIM_CS_LOGIN2 от клиента {}".format(address[0], address[1]))
@@ -823,6 +847,159 @@ async def contact_list(writer, groups, contacts, address, magic, proto, seq, con
             contacts_list += await create_lps(xstatus_desc, "utf-16-le") # xstatus description
             contacts_list += await create_ul(com_support) # com support
             contacts_list += await create_lps("") # user agent 
+    elif proto in [65556]:
+        # Выставляем нужную маску
+        contacts_mask = await create_lps("uussuussssusuuusss")
+
+        # Добавляем группы в контакт-лист
+        for group in groups:
+            groups_list += await create_ul(group.get("flags"))
+            groups_list += await create_lps(group.get("name"), "utf-16-le")
+
+        # Добавляем контактов в контакт-лист
+        for contact in contacts:
+            async with connection.cursor(aiomysql.DictCursor) as cursor:
+                await cursor.execute("SELECT * FROM user_data WHERE email = %s", (contact.get("email"),))
+                result_account_data = await cursor.fetchone()
+
+            # Получаем номер пользователя
+            async with connection.cursor(aiomysql.DictCursor) as cursor:
+                await cursor.execute("SELECT phone FROM anketa WHERE email = %s", (contact.get("email"),))
+                result_anketa_data = await cursor.fetchone()
+
+            # Выставляем никнейм контакта
+            if result_account_data is None:
+                contact_nickname = "[deleted]"
+            else:
+                contact_nickname = result_account_data.get("nickname")
+
+            # Извлечение номера телефона
+            phone = result_anketa_data.get("phone")
+
+            if phone is None:
+                phone = ""
+
+            # Статус
+            xstatus_meaning = ""
+            xstatus_title = ""
+            xstatus_desc = ""
+            status_num = 0
+            com_support = 0
+
+            # Ищем клиента в списке и сохраняемм его статус
+            for presence in presences.values():
+                if presence.get("email") == contact.get("email"):
+                    # Сохраняем статус контакта
+                    xstatus_meaning = presence.get("xstatus_meaning")
+                    xstatus_title = presence.get("xstatus_title")
+                    xstatus_desc = presence.get("xstatus_description")
+                    status_num = presence.get("status")
+                    com_support = presence.get("com_support")
+
+            # Извлечение кастомного никнейма
+            custom_nickname = contact.get("custom_nickname")
+
+            # Добавляем контакт в лист
+            contacts_list += await create_ul(contact.get("flags")) # flags
+            contacts_list += await create_ul(contact.get("index")) # group id
+            contacts_list += await create_lps(contact.get("email")) # email
+            if custom_nickname:
+                contacts_list += await create_lps(custom_nickname, "utf-16-le") # nickname
+            else:
+                contacts_list += await create_lps(contact_nickname, "utf-16-le") # nickname
+            contacts_list += await create_ul(contact.get("authorized")) # authorized
+            contacts_list += await create_ul(status_num) # status
+            contacts_list += await create_lps(phone) # phone
+            contacts_list += await create_lps(xstatus_meaning) # xstatus meaning
+            contacts_list += await create_lps(xstatus_title, "utf-16-le") # xstatus title
+            contacts_list += await create_lps(xstatus_desc, "utf-16-le") # xstatus description
+            contacts_list += await create_ul(com_support) # com support
+            contacts_list += await create_lps("") # user agent 
+
+            ### ???
+            contacts_list += await create_ul(0)
+            contacts_list += await create_ul(0)
+            contacts_list += await create_ul(0)
+            contacts_list += await create_lps("")
+            contacts_list += await create_lps("")
+            contacts_list += await create_lps("")
+    elif proto in [65557, 65558]:
+        # Выставляем нужную маску
+        contacts_mask = await create_lps("uussuussssusuuussss")
+
+        # Добавляем группы в контакт-лист
+        for group in groups:
+            groups_list += await create_ul(group.get("flags"))
+            groups_list += await create_lps(group.get("name"), "utf-16-le")
+
+        # Добавляем контактов в контакт-лист
+        for contact in contacts:
+            async with connection.cursor(aiomysql.DictCursor) as cursor:
+                await cursor.execute("SELECT * FROM user_data WHERE email = %s", (contact.get("email"),))
+                result_account_data = await cursor.fetchone()
+
+            # Получаем номер пользователя
+            async with connection.cursor(aiomysql.DictCursor) as cursor:
+                await cursor.execute("SELECT phone FROM anketa WHERE email = %s", (contact.get("email"),))
+                result_anketa_data = await cursor.fetchone()
+
+            # Выставляем никнейм контакта
+            if result_account_data is None:
+                contact_nickname = "[deleted]"
+            else:
+                contact_nickname = result_account_data.get("nickname")
+
+            # Извлечение номера телефона
+            phone = result_anketa_data.get("phone")
+
+            if phone is None:
+                phone = ""
+
+            # Статус
+            xstatus_meaning = ""
+            xstatus_title = ""
+            xstatus_desc = ""
+            status_num = 0
+            com_support = 0
+
+            # Ищем клиента в списке и сохраняемм его статус
+            for presence in presences.values():
+                if presence.get("email") == contact.get("email"):
+                    # Сохраняем статус контакта
+                    xstatus_meaning = presence.get("xstatus_meaning")
+                    xstatus_title = presence.get("xstatus_title")
+                    xstatus_desc = presence.get("xstatus_description")
+                    status_num = presence.get("status")
+                    com_support = presence.get("com_support")
+
+            # Извлечение кастомного никнейма
+            custom_nickname = contact.get("custom_nickname")
+
+            # Добавляем контакт в лист
+            contacts_list += await create_ul(contact.get("flags")) # flags
+            contacts_list += await create_ul(contact.get("index")) # group id
+            contacts_list += await create_lps(contact.get("email")) # email
+            if custom_nickname:
+                contacts_list += await create_lps(custom_nickname, "utf-16-le") # nickname
+            else:
+                contacts_list += await create_lps(contact_nickname, "utf-16-le") # nickname
+            contacts_list += await create_ul(contact.get("authorized")) # authorized
+            contacts_list += await create_ul(status_num) # status
+            contacts_list += await create_lps(phone) # phone
+            contacts_list += await create_lps(xstatus_meaning) # xstatus meaning
+            contacts_list += await create_lps(xstatus_title, "utf-16-le") # xstatus title
+            contacts_list += await create_lps(xstatus_desc, "utf-16-le") # xstatus description
+            contacts_list += await create_ul(com_support) # com support
+            contacts_list += await create_lps("") # user agent 
+
+            ### ???
+            contacts_list += await create_ul(0)
+            contacts_list += await create_ul(0)
+            contacts_list += await create_ul(0)
+            contacts_list += await create_lps("")
+            contacts_list += await create_lps("")
+            contacts_list += await create_lps("")
+            contacts_list += await create_lps("")
     elif proto in [65544, 65545, 65546, 65547, 65548, 65549]:
         # Выставляем нужную маску
         contacts_mask = await create_lps("uussuus")
@@ -1016,7 +1193,7 @@ async def change_status(connection, address, email, data, version):
                     client.get("writer").write(response)
                     await client.get("writer").drain()
                     logger.info(f"Отправил пакет MRIM_CS_USER_STATUS пользователю {client.get("email")}")
-                elif client.get("proto") in [65552, 65554, 65555]:
+                elif client.get("proto") in [65552, 65554, 65555, 65556, 65557, 65558, 65559]:
                     packet_data = status + xstatus_meaning + xstatus_title_utf16 + xstatus_description_utf16 + email + com_support + user_agent
 
                     response = await build_header(
@@ -1116,7 +1293,7 @@ async def wp_request(writer, connection, address, data, magic, proto, seq):
         count_rows += 1
 
         # Выбор кодировки некоторых данных
-        if proto in [65552, 65554, 65555]:
+        if proto in [65552, 65554, 65555, 65556, 65557, 65558, 65559]:
             encoding = "utf-16-le"
         else:
             encoding = "windows-1251"
@@ -1385,7 +1562,7 @@ async def new_message(writer, connection, address, data, magic, proto, seq, emai
     # Ищем получателя в списке и отправляем ему сообщение
     for client in clients.values():
         if client.get("email") == parsed_data.get("to"):
-            if client.get("proto") in [65552, 65554, 65555]:
+            if client.get("proto") in [65552, 65554, 65555, 65556, 65557, 65558, 65559]:
                 # Итоговые данные пакета
                 if "QIP" in client.get("legacy_version"):
                     # Защита пирога с васьком от половины (а может быть и всех) пустых сообщений

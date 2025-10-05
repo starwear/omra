@@ -2,6 +2,8 @@
 
 # OMRA by Starwear
 
+import hashlib
+
 async def login3_parser(data, proto):
     """Парсер MRIM_CS_LOGIN3"""
     if proto in [65557]:
@@ -15,7 +17,7 @@ async def login3_parser(data, proto):
         password_length = int.from_bytes(data[email_end:email_end + 4], "little")
         password_start = email_end + 4
         password_end = password_start + password_length
-        password = data[password_start:password_end].decode("windows-1251")
+        password = hashlib.md5(data[password_start:password_end].decode("windows-1251").encode("windows-1251")).hexdigest()
         
         # Извлечение DWORD ???
         unknown_dword1_start = password_end
@@ -598,7 +600,7 @@ async def add_contact_parser(data, proto):
     name_length = int.from_bytes(data[contact_end:contact_end + 4], "little")
     name_start = contact_end + 4
     name_end = name_start + name_length
-    if proto in [65552, 65554, 65555]:
+    if proto in [65552, 65554, 65555, 65556, 65557, 65558, 65559]:
         name = data[name_start:name_end].decode("utf-16-le")
     else:
         name = data[name_start:name_end].decode("windows-1251")
