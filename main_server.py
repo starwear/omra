@@ -456,55 +456,55 @@ async def handle_client(reader, writer):
                 presences[email]["xstatus_title"] = ""
                 presences[email]["xstatus_description"] = ""
 
-            # Получаем данные о аккаунте пользователя
-            async with connection.cursor(aiomysql.DictCursor) as cursor:
-                await cursor.execute("SELECT * FROM user_data WHERE email = %s", (email,))
-                result_account_data = await cursor.fetchone()
+                # Получаем данные о аккаунте пользователя
+                async with connection.cursor(aiomysql.DictCursor) as cursor:
+                    await cursor.execute("SELECT * FROM user_data WHERE email = %s", (email,))
+                    result_account_data = await cursor.fetchone()
 
-            # Получаем контакты
-            contacts = json.loads(result_account_data.get("contacts"))
+                # Получаем контакты
+                contacts = json.loads(result_account_data.get("contacts"))
 
-            # Собираем пакет
-            status = await create_ul(0)
-            xstatus_meaning = await create_lps("")
-            xstatus_title = await create_lps("")
-            xstatus_description = await create_lps("")
-            email = await create_lps(email)
-            com_support = await create_ul(0)
-            user_agent = await create_lps("")
+                # Собираем пакет
+                status = await create_ul(0)
+                xstatus_meaning = await create_lps("")
+                xstatus_title = await create_lps("")
+                xstatus_description = await create_lps("")
+                email = await create_lps(email)
+                com_support = await create_ul(0)
+                user_agent = await create_lps("")
 
-            # Рассылка нового статуса всем контактам
-            for contact in contacts:
-                for client in clients.values():
-                    if client.get("email") == contact.get("email"):
-                        if client.get("proto") in [65543, 65544, 65545, 65546, 65547, 65548, 65549]:
-                            packet_data = status + email
-                            
-                            response = await build_header(
-                                client.get("magic"),
-                                client.get("proto"),
-                                1,
-                                MRIM_CS_USER_STATUS,
-                                len(packet_data)
-                            ) + packet_data
+                # Рассылка нового статуса всем контактам
+                for contact in contacts:
+                    for client in clients.values():
+                        if client.get("email") == contact.get("email"):
+                            if client.get("proto") in [65543, 65544, 65545, 65546, 65547, 65548, 65549]:
+                                packet_data = status + email
+                                
+                                response = await build_header(
+                                    client.get("magic"),
+                                    client.get("proto"),
+                                    1,
+                                    MRIM_CS_USER_STATUS,
+                                    len(packet_data)
+                                ) + packet_data
 
-                            client.get("writer").write(response)
-                            await client.get("writer").drain()
-                            logger.info(f"Отправил пакет MRIM_CS_USER_STATUS пользователю {client.get("email")}")
-                        elif client.get("proto") in [65552, 65554, 65555, 65556, 65557, 65558, 65559]:
-                            packet_data = status + xstatus_meaning + xstatus_title + xstatus_description + email + com_support + user_agent
-                            
-                            response = await build_header(
-                                client.get("magic"),
-                                client.get("proto"),
-                                1,
-                                MRIM_CS_USER_STATUS,
-                                len(packet_data)
-                            ) + packet_data
+                                client.get("writer").write(response)
+                                await client.get("writer").drain()
+                                logger.info(f"Отправил пакет MRIM_CS_USER_STATUS пользователю {client.get("email")}")
+                            elif client.get("proto") in [65551, 65552, 65554, 65555, 65556, 65557, 65558, 65559]:
+                                packet_data = status + xstatus_meaning + xstatus_title + xstatus_description + email + com_support + user_agent
+                                
+                                response = await build_header(
+                                    client.get("magic"),
+                                    client.get("proto"),
+                                    1,
+                                    MRIM_CS_USER_STATUS,
+                                    len(packet_data)
+                                ) + packet_data
 
-                            client.get("writer").write(response)
-                            await client.get("writer").drain()
-                            logger.info(f"Отправил пакет MRIM_CS_USER_STATUS пользователю {client.get("email")}")
+                                client.get("writer").write(response)
+                                await client.get("writer").drain()
+                                logger.info(f"Отправил пакет MRIM_CS_USER_STATUS пользователю {client.get("email")}")
 
         # Закрываем подключение
         writer.close()
