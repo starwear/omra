@@ -221,7 +221,7 @@ async def login2_parser(data, proto):
             "version2": user_agent,
             "language": "ru"
         }
-    elif proto in [65551]:
+    elif proto in [65550, 65551]:
         # Извлечение почты
         email_length = int.from_bytes(data[0:4], "little")
         email_start = 4
@@ -471,7 +471,7 @@ async def change_status_parser(data, proto):
             "xstatus_description": "",
             "com_support": 0
         }
-    elif proto in [65551]:
+    elif proto in [65550, 65551]:
         # Извлекаем числовой статус
         status = int.from_bytes(data[0:4], "little")
 

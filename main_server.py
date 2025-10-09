@@ -206,7 +206,7 @@ async def handle_client(reader, writer):
                                     client.get("writer").write(response)
                                     await client.get("writer").drain()
                                     logger.info(f"Отправил пакет MRIM_CS_USER_STATUS пользователю {client.get("email")}")
-                                elif client.get("proto") in [65551]:
+                                elif client.get("proto") in [65550, 65551]:
                                     packet_data = status + xstatus_meaning + xstatus_title_cp1251 + xstatus_description_cp1251 + email_in_lps + com_support + user_agent
 
                                     response = await build_header(
@@ -320,7 +320,7 @@ async def handle_client(reader, writer):
                                     client.get("writer").write(response)
                                     await client.get("writer").drain()
                                     logger.info(f"Отправил пакет MRIM_CS_USER_STATUS пользователю {client.get("email")}")
-                                elif client.get("proto") in [65551]:
+                                elif client.get("proto") in [65550, 65551]:
                                     packet_data = status + xstatus_meaning + xstatus_title_cp1251 + xstatus_description_cp1251 + email_in_lps + com_support + user_agent
 
                                     response = await build_header(
@@ -491,7 +491,7 @@ async def handle_client(reader, writer):
                                 client.get("writer").write(response)
                                 await client.get("writer").drain()
                                 logger.info(f"Отправил пакет MRIM_CS_USER_STATUS пользователю {client.get("email")}")
-                            elif client.get("proto") in [65551, 65552, 65554, 65555, 65556, 65557, 65558, 65559]:
+                            elif client.get("proto") in [65550, 65551, 65552, 65554, 65555, 65556, 65557, 65558, 65559]:
                                 packet_data = status + xstatus_meaning + xstatus_title + xstatus_description + email + com_support + user_agent
                                 
                                 response = await build_header(
@@ -850,7 +850,7 @@ async def contact_list(writer, groups, contacts, address, magic, proto, seq, con
             contacts_list += await create_lps("", "utf-16-le") # ???
             contacts_list += await create_lps("", "utf-16-le") # ???
             contacts_list += await create_ul(0) # ???
-    elif proto in [65551]:
+    elif proto in [65550, 65551]:
         # Выставляем нужную маску
         contacts_mask = await create_lps("uussuussssus")
 
@@ -1324,7 +1324,7 @@ async def change_status(connection, address, email, data, version):
                     client.get("writer").write(response)
                     await client.get("writer").drain()
                     logger.info(f"Отправил пакет MRIM_CS_USER_STATUS пользователю {client.get("email")}")
-                elif client.get("proto") in [65551]:
+                elif client.get("proto") in [65550, 65551]:
                     packet_data = status + xstatus_meaning + xstatus_title_cp1251 + xstatus_description_cp1251 + email + com_support + user_agent
 
                     response = await build_header(

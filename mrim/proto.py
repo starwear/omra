@@ -27,7 +27,7 @@ MRIM_CS_LOGIN2 = 0x1038 # C -> S
     # LPS -> client info
 MRIM_CS_LOGIN3 = 0x1078 # C -> S
     # LPS -> login
-    # LPS -> password (md5, clear in 5.6)
+    # LPS -> password (md5, clear in MRA 5.6)
     # DWORD -> ???
     # LPS -> version
     # LPS -> locale
@@ -35,10 +35,7 @@ MRIM_CS_LOGIN3 = 0x1078 # C -> S
     # DWORD -> ???
     # LPS -> ??? geo-list
     # LPS -> version2
-    # for ;;
-        # DWORD[2] -> id_argument
-        # DWORD -> ???
-        # DWORD -> data
+    # ... other data
 MRIM_CS_LOGIN_ACK = 0x1004 # S -> C
     # empty
 MRIM_CS_LOGIN_REJ = 0x1005 # S -> C
@@ -67,7 +64,7 @@ GET_CONTACTS_INTERR = 0x0002
         # LPS -> nickname (utf-16-le)
         # UL -> authorization (0 - authorized, 1 - deauthorized)
         # UL -> status (num)
-        # LPS -> phone number (ex. 70000000000)
+        # LPS -> phone number
         # LPS -> xstatus meaning
         # LPS -> xstatus title (utf-16-le)
         # LPS -> xstatus description (utf-16-le)
@@ -126,7 +123,6 @@ MRIM_CS_ADD_CONTACT = 0x1019 # C -> S
     # UL -> flags
 CONTACT_FLAG_REMOVED = 0x00000001 # Не применяется к MRIM_CS_ADD_CONTACT
 CONTACT_FLAG_GROUP = 0x00000002
-CONTACT_FLAG_GROUP_ALT = [0x1000002, 0x2000002, 0x3000002, 0x4000002, 0x5000002, 0x6000002, 0x7000002, 0x8000002, 0x9000002, 0xa000002, 0xb000002, 0xc000002, 0xd000002, 0xe000002, 0xf000002, 0x10000002]
 CONTACT_FLAG_INVISIBLE = 0x00000004 # "Я всегда невидим для"
 CONTACT_FLAG_VISIBLE = 0x00000008 # "Я всегда видим для"
 CONTACT_FLAG_IGNORE = 0x00000010 # Контакт в списоке игнорируемых
@@ -195,7 +191,7 @@ MRIM_CS_GAME = 0x1035 # C <-> S
 
 ### SMS-сообщения
 MRIM_CS_SMS = 0x1039 # C -> S
-    # UL -> flags
+    # UL -> flags (0)
     # LPS -> phone
     # LPS -> message 
     
