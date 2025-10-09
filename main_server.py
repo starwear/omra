@@ -738,7 +738,7 @@ async def user_info(writer, nickname, address, magic, proto, seq):
         msg_unread = await create_lps("MESSAGES.UNREAD") + await create_lps("0", "utf-16-le")
         nickname = await create_lps("MRIM.NICKNAME") + await create_lps(nickname, "utf-16-le")
         endpoint = await create_lps("client.endpoint") + await create_lps("{}:{}".format(address[0], address[1]), "utf-16-le")
-    elif proto in [65543, 65544, 65545, 65546, 65547, 65548, 65549, 65551]:
+    elif proto in [65543, 65544, 65545, 65546, 65547, 65548, 65549, 65550, 65551]:
         msg_total = await create_lps("MESSAGES.TOTAL") + await create_lps("0")
         msg_unread = await create_lps("MESSAGES.UNREAD") + await create_lps("0")
         nickname = await create_lps("MRIM.NICKNAME") + await create_lps(nickname)
