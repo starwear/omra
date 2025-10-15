@@ -800,7 +800,10 @@ async def contact_list(writer, groups, contacts, address, magic, proto, seq, con
                 contact_nickname = result_account_data.get("nickname")
 
             # Извлечение номера телефона
-            phone = result_anketa_data.get("phone")
+            if result_account_data is None:
+                phone = None
+            else:
+                phone = result_anketa_data.get("phone")
 
             if phone is None:
                 phone = ""
@@ -877,7 +880,10 @@ async def contact_list(writer, groups, contacts, address, magic, proto, seq, con
                 contact_nickname = result_account_data.get("nickname")
 
             # Извлечение номера телефона
-            phone = result_anketa_data.get("phone")
+            if result_account_data is None:
+                phone = None
+            else:
+                phone = result_anketa_data.get("phone")
 
             if phone is None:
                 phone = ""
@@ -951,7 +957,10 @@ async def contact_list(writer, groups, contacts, address, magic, proto, seq, con
                 contact_nickname = result_account_data.get("nickname")
 
             # Извлечение номера телефона
-            phone = result_anketa_data.get("phone")
+            if result_account_data is None:
+                phone = None
+            else:
+                phone = result_anketa_data.get("phone")
 
             if phone is None:
                 phone = ""
@@ -1019,7 +1028,10 @@ async def contact_list(writer, groups, contacts, address, magic, proto, seq, con
                 contact_nickname = result_account_data.get("nickname")
 
             # Извлечение номера телефона
-            phone = result_anketa_data.get("phone")
+            if result_account_data is None:
+                phone = None
+            else:
+                phone = result_anketa_data.get("phone")
 
             if phone is None:
                 phone = ""
@@ -1095,7 +1107,10 @@ async def contact_list(writer, groups, contacts, address, magic, proto, seq, con
                 contact_nickname = result_account_data.get("nickname")
 
             # Извлечение номера телефона
-            phone = result_anketa_data.get("phone")
+            if result_account_data is None:
+                phone = None
+            else:
+                phone = result_anketa_data.get("phone")
 
             if phone is None:
                 phone = ""
@@ -1172,7 +1187,10 @@ async def contact_list(writer, groups, contacts, address, magic, proto, seq, con
                 contact_nickname = result_account_data.get("nickname")
 
             # Извлечение номера телефона
-            phone = result_anketa_data.get("phone")
+            if result_account_data is None:
+                phone = None
+            else:
+                phone = result_anketa_data.get("phone")
 
             if phone is None:
                 phone = ""
