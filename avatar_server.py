@@ -13,13 +13,6 @@ load_dotenv()
 
 AVATARS_PATH = os.environ.get("avatars_path")
 
-async def create_empty_avatar(size: int):
-    img = Image.new('RGB', (size, size), color=(255, 255, 255))
-    buf = io.BytesIO()
-    img.save(buf, 'JPEG', quality=1)
-    buf.seek(0)
-    return buf
-
 async def get_avatar(request):
     domain = request.match_info['domain']
     username = request.match_info['username']
@@ -29,6 +22,8 @@ async def get_avatar(request):
         size = 90
     elif type_avatar == "_mrimavatarsmall":
         size = 45
+    elif type_avatar == "_mrimavatar128":
+        size = 128
     else:
         return web.Response(text="Bad Request", status=400)
 
@@ -36,9 +31,6 @@ async def get_avatar(request):
     path = os.path.join(AVATARS_PATH, file_name)
 
     if not os.path.isfile(path):
-        # Создаем пустышку
-        empty_avatar = await create_empty_avatar(1)
-
         # Дата истечения аватарки
         expires = datetime.now() + timedelta(days=7)
 
@@ -51,7 +43,7 @@ async def get_avatar(request):
             'X-NoImage': '1',
         }
 
-        return web.Response(body=empty_avatar.getvalue(), status=200, headers=headers, content_type='image/jpeg')
+        return web.Response(status=200, headers=headers, content_type='image/jpeg')
 
     else:
         # Ресайзим картинку
