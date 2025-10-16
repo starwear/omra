@@ -26,6 +26,10 @@ async def get_avatar(request):
         size = 128
     elif type_avatar == "_mrimavatar32":
         size = 32
+    elif type_avatar == "_mrimavatar22":
+        size = 22
+    elif type_avatar == "_mrimavatar60":
+        size = 60
     else:
         return web.Response(text="Bad Request", status=400)
 
