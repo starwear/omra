@@ -27,6 +27,18 @@ async def get_avatar(request):
     else:
         return web.Response(text="Bad Request", status=400)
 
+    # Костыль для MRA 6.x
+    if domain == "mail.ru":
+        domain = "mail"
+    elif domain == "bk.ru":
+        domain = "bk"
+    elif domain == "inbox.ru":
+        domain = "inbox"
+    elif domain == "list.ru":
+        domain = "list"
+    elif domain == "corp.mail.ru":
+        domain = "corp"
+
     file_name = f"{username}_{domain}.jpg"
     path = os.path.join(AVATARS_PATH, file_name)
 
