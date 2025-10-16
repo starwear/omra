@@ -106,22 +106,22 @@ async def handle_client(reader, writer):
                 response = await build_header(
                     unbuilded_header.get("magic"), # Магический заголовок
                     unbuilded_header.get("proto"), # Версия протокола
-                    unbuilded_header.get("seq") + 1, # Очередь пакета
+                    unbuilded_header.get("seq"), # Очередь пакета
                     MRIM_CS_SSL_ACK, # Команда
                     0 # Размер пакета без заголовка
                 )
 
                 # Создание контекста SSL
-                context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+                context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
                 context.load_cert_chain(certfile=os.environ.get("certfile_path"), keyfile=os.environ.get("keyfile_path"))
-
-                # Начинаем пиздец и ужас
-                await writer.start_tls(context)
 
                 # Записываем ответ в сокет
                 writer.write(response)
                 await writer.drain()
                 logger.info("Отправил команду MRIM_CS_SSL_ACK клиенту {}".format(address[0]))
+
+                # Начинаем пиздец и ужас
+                await writer.start_tls(context)
             elif unbuilded_header.get("command") == MRIM_CS_LOGIN2:
                 # Обработка MRIM_CS_LOGIN2
                 logger.info("Получил команду MRIM_CS_LOGIN2 от клиента {}".format(address[0], address[1]))
