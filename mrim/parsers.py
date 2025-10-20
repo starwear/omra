@@ -618,6 +618,45 @@ async def add_contact_parser(data, proto):
         "unused": unused
     }
 
+async def modify_contact_parser(data, proto):
+    """Парсер MRIM_CS_MODIFY_CONTACT"""
+    # Айди (???)
+    id = int.from_bytes(data[0:4], "little")
+
+    # Флаги
+    flags = int.from_bytes(data[4:8], "little")
+
+    # Извлечение айди группы
+    group_id = int.from_bytes(data[8:12], "little")
+
+    # Извлечение почты (имени)
+    email_length = int.from_bytes(data[12:16], "little")
+    email_start = 16
+    email_end = email_start + email_length
+    email = data[email_start:email_end].decode("windows-1251")
+
+    # Извлечение имени
+    name_length = int.from_bytes(data[email_end:email_end + 4], "little")
+    name_start = email_end + 4
+    name_end = name_start + name_length
+    name = data[name_start:name_end].decode("windows-1251")
+
+    # Извлечение мобил, наверное
+    phones_length = int.from_bytes(data[name_end:name_end + 4], "little")
+    phones_start = name_end + 4
+    phones_end = phones_start + phones_length
+    phones = data[phones_start:phones_end].decode("windows-1251")
+
+    # Возвращаем
+    return {
+        "id": id,
+        "flags": flags,
+        "group_id": group_id,
+        "email": email,
+        "name": name,
+        "phones": phones
+    }
+
 async def new_message_parser(data, proto):
     """Парсер MRIM_CS_MESSAGE"""
     # Флаги сообщения

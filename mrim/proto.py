@@ -142,6 +142,34 @@ CONTACT_OPER_USER_EXISTS = 0x0005
 CONTACT_OPER_GROUP_LIMIT = 0x6
     # UL -> contact id or -1 if status is not OK
 
+MRIM_CS_MODIFY_CONTACT = 0x101B # C -> S
+### GROUPS 1.13
+# UL id
+# UL flags = CONTACT_FLAG_GROUP | (id << 24)
+# UL group_id = 0
+# LPS name (ANSI?)
+# LPS name (UNICODE?) (0 - если удаление)
+# UL 0 ( >= 1.15 )
+
+### buddy
+# UL id
+# UL flags - same as for MRIM_CS_ADD_CONTACT
+# UL group id (при удалении контакта = 0 ?)
+# LPS e-mail
+# LPS name UNICODE ??
+# LPS phones
+
+### phone
+# UL id
+# UL flags = CONTACT_FLAG_PHONE |
+# UL group_id = MRIM_PHONE_GROUP_ID (при удалении контакта = 0 ?)
+# LPS "phone"
+# LPS alias
+# LPS phones
+
+MRIM_CS_MODIFY_CONTACT_ACK = 0x101C # S -> C
+# UL -> status, same as for MRIM_CS_ADD_CONTACT_ACK
+
 ### Сообщения
 MRIM_CS_MESSAGE = 0x1008 # C -> S
     # UL -> flags

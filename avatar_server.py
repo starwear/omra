@@ -46,6 +46,8 @@ async def get_avatar(request):
         domain = "list"
     elif domain == "corp.mail.ru":
         domain = "corp"
+    elif domain == "mailua":
+        domain = "mailua"
 
     file_name = f"{username}_{domain}.jpg"
     path = os.path.join(AVATARS_PATH, file_name)

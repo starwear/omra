@@ -15,7 +15,8 @@ CREATE TABLE `user_data` (
     `email` TEXT NOT NULL,
     `nickname` TEXT NOT NULL,
     `groups` TEXT NOT NULL,
-    `contacts` TEXT NOT NULL
+    `contacts` TEXT NOT NULL,
+    `status` INT NOT NULL
 );
 
 -- Таблица с анкетами пользователей

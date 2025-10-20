@@ -384,6 +384,15 @@ async def handle_client(reader, writer):
                     break
 
                 await add_contact(writer, connection, address, unbuilded_header.get("other_data"), unbuilded_header.get("magic"), unbuilded_header.get("proto"), unbuilded_header.get("seq"), email)
+            elif unbuilded_header.get("command") == MRIM_CS_MODIFY_CONTACT:
+                # Добавление контакта
+                logger.info("Получил команду MRIM_CS_MODIFY_CONTACT от клиента {}".format(address[0]))
+
+                # Проверка приветствия и авторизации
+                if greeted == False or authorized == False:
+                    break
+
+                await modify_contact(writer, connection, address, unbuilded_header.get("other_data"), unbuilded_header.get("magic"), unbuilded_header.get("proto"), unbuilded_header.get("seq"), email)
             elif unbuilded_header.get("command") == MRIM_CS_MESSAGE:
                 # Пакет сообщения
                 logger.info("Получил команду MRIM_CS_MESSAGE от клиента {}".format(address[0]))
@@ -1643,17 +1652,23 @@ async def add_contact(writer, connection, address, data, magic, proto, seq, emai
             writer.write(response)
             await writer.drain()
             logger.info("Отправил команду MRIM_CS_ADD_CONTACT_ACK клиенту {}".format(address[0]))      
-    elif parsed_data.get("flags") == CONTACT_FLAG_GROUP or parsed_data.get("flags") == (CONTACT_FLAG_GROUP | (len(groups) << 24)):
+    elif parsed_data.get("flags") & CONTACT_FLAG_GROUP:
         """Создание группы"""
         # Добавляем группу в список
-        groups.append(
-            {
-                "flags": 0,
-                "name": parsed_data.get("contact")
-            }
-        )
-
-        logger.info(1)
+        if proto in [65543, 65544, 65545, 65546, 65547, 65548, 65549, 65550, 65551]:
+            groups.append(
+                {
+                    "flags": 0,
+                    "name": parsed_data.get("contact")
+                }
+            )
+        else:
+            groups.append(
+                {
+                    "flags": 0,
+                    "name": parsed_data.get("name")
+                }
+            )
 
         # Проверка на количество групп
         if len(groups) > 20:
@@ -1703,6 +1718,23 @@ async def add_contact(writer, connection, address, data, magic, proto, seq, emai
         writer.write(response)
         await writer.drain()
         logger.info("Отправил команду MRIM_CS_ADD_CONTACT_ACK клиенту {}".format(address[0]))
+
+async def modify_contact(writer, connection, address, data, magic, proto, seq, email):
+    """Изменение контакта (недопилено нихуя)"""
+    async with connection.cursor(aiomysql.DictCursor) as cursor:
+        await cursor.execute("SELECT * FROM user_data WHERE email = %s", (email,))
+        result_account_data = await cursor.fetchone()
+
+    # Извлекаем список контактов
+    contacts = json.loads(result_account_data.get("contacts"))
+
+    # Извлекаем список групп
+    groups = json.loads(result_account_data.get("groups"))
+
+    # Парсим пакет
+    parsed_data = await modify_contact_parser(data, proto)
+
+    logger.info(parsed_data)
 
 async def new_message(writer, connection, address, data, magic, proto, seq, email):
     """Отправка нового сообщения"""
