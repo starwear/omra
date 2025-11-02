@@ -1193,19 +1193,28 @@ async def wp_request(writer, connection, address, data, magic, proto, seq):
         # Добавление имени, если есть
         if firstname:
             anketa_header_result += await create_lps("FirstName")
-            anketa_result += await create_lps(firstname, encoding)
+            try:
+                anketa_result += await create_lps(firstname, encoding)
+            except:
+                anketa_result += await create_lps("", encoding)
             count_rows += 1
 
         # Добавление фамилии, есть есть
         if lastname:
             anketa_header_result += await create_lps("LastName")
-            anketa_result += await create_lps(lastname, encoding)
+            try:
+                anketa_result += await create_lps(lastname, encoding)
+            except:
+                anketa_result += await create_lps("", encoding)
             count_rows += 1
 
         # Добавление города, если есть
         if location:
             anketa_header_result += await create_lps("Location")
-            anketa_result += await create_lps(location, encoding)
+            try:
+                anketa_result += await create_lps(location, encoding)
+            except:
+                anketa_result += await create_lps("", encoding)
             count_rows += 1
 
         # Добавление дня рождения, если есть
