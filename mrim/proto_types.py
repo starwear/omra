@@ -46,8 +46,7 @@ async def unbuild_header(data: bytes):
         "size": size,
         "fromip": fromip,
         "fromport": fromport,
-        "reserved": reserved,
-        "other_data": data[44:]
+        "reserved": reserved
     }
 
 async def create_ul(value: int):
