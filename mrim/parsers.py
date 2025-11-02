@@ -447,14 +447,14 @@ async def login2_parser(data, proto):
         return {
             "email": email,
             "password": password,
-            "status": status,
-            "xstatus_meaning": xstatus_meaning,
-            "xstatus_title": xstatus_title,
-            "xstatus_description": xstatus_description,
-            "com_support": com_support,
-            "version1": version1,
-            "version2": version2,
-            "language": language
+            "status": 1,
+            "xstatus_meaning": "",
+            "xstatus_title": "",
+            "xstatus_description": "",
+            "com_support": 0,
+            "version1": "",
+            "version2": "Unrecognized MRA",
+            "language": "ru"
         }
     
 async def change_status_parser(data, proto):
