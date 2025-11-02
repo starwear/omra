@@ -966,23 +966,24 @@ async def contact_list(writer, groups, contacts, address, magic, proto, seq, con
         if proto > 65556:
             contacts_mask = await create_lps("uussuussssusuuusss")
 
-            contact_list += await create_ul(0)
-            contact_list += await create_ul(0)
-            contact_list += await create_ul(0)
-            contact_list += await create_lps("")
-            contact_list += await create_lps("")
-            contact_list += await create_lps("")
+            contact_list += await create_ul(0) # ???
+            contact_list += await create_ul(0) # ???
+            contact_list += await create_ul(0) # ???
+            contact_list += await create_lps("") # ???
+            contact_list += await create_lps("") # ???
+            contact_list += await create_lps("") # ???
 
         ### MRIM 1.21, 1.22
         if proto > 65557:
             contacts_mask = await create_lps("uussuussssusuuussss")
 
-            contact_list += await create_lps("")
+            contact_list += await create_lps("") # ???
 
         ### MRIM 1.23
-        if proto > 65559:
+        if proto == 65559:
             contacts_mask = await create_lps("uussuussssusuuusssssu")
 
+            contact_list += await create_lps("") # ???
             contact_list += await create_ul(0) # ???
 
     result = status + groups_number + groups_mask + contacts_mask + group_list + contact_list
