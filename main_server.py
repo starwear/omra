@@ -1177,7 +1177,10 @@ async def wp_request(writer, connection, address, data, magic, proto, seq):
         # Извлечение никнейма
         anketa_header_result += await create_lps("Nickname")
         if nickname:
-            anketa_result += await create_lps(nickname, encoding)
+            try:
+                anketa_result += await create_lps(nickname, encoding)
+            except:
+                anketa_result += await create_lps(email, encoding)
         else:
             anketa_result += await create_lps(email, encoding)
         count_rows += 1
