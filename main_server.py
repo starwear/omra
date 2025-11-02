@@ -209,6 +209,14 @@ async def handle_client(reader, writer):
                                     if result_auth.get("status") == 4:
                                         packet_data = await create_ul(1) + email_encoded
 
+                                response = await build_header(
+                                    client.get("magic"),
+                                    client.get("proto"),
+                                    1,
+                                    MRIM_CS_USER_STATUS,
+                                    len(packet_data)
+                                ) + packet_data
+
                                 client.get("writer").write(response)
                                 await client.get("writer").drain()
                                 logger.info(f"Отправил пакет MRIM_CS_USER_STATUS пользователю {client.get("email")}")      
@@ -398,6 +406,14 @@ async def handle_client(reader, writer):
                                         # Фикс прикола с 5 агентами
                                         if result_auth.get("status") == 4:
                                             packet_data = await create_ul(1) + email_encoded
+
+                                    response = await build_header(
+                                        client.get("magic"),
+                                        client.get("proto"),
+                                        1,
+                                        MRIM_CS_USER_STATUS,
+                                        len(packet_data)
+                                    ) + packet_data
 
                                     client.get("writer").write(response)
                                     await client.get("writer").drain()
