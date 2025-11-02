@@ -965,7 +965,7 @@ async def contact_list(writer, groups, contacts, address, magic, proto, seq, con
         contact_list += await create_ul(status_num) # status
 
         ### MRIM 1.8, 1.9, 1.10, 1.11, 1.12, 1.13
-        if proto >= 65543:
+        if proto > 65543:
             contacts_mask = await create_lps("uussuus")
 
             contact_list += await create_lps(phone) # phone
@@ -974,7 +974,7 @@ async def contact_list(writer, groups, contacts, address, magic, proto, seq, con
         if proto >= 65549:
             contacts_mask = await create_lps("uussuussssus")
 
-            contact_list += await create_lps(xstatus_meaning, encoding) # xstatus meaning
+            contact_list += await create_lps(xstatus_meaning) # xstatus meaning
             contact_list += await create_lps(xstatus_title, encoding) # xstatus title
             contact_list += await create_lps(xstatus_desc, encoding) # xstatus description
             contact_list += await create_ul(com_support) # com support
