@@ -45,6 +45,7 @@ async def handle_client(reader, writer):
     email = None # Почта пользователя
     greeted = False # Приветствовал ли клиент сервер
     authorized = False # Авторизация
+    legacy_version = None # user-agent старого формата
 
     logger.info("Работаю с клиентом: {}".format(address[0]))
 
@@ -140,6 +141,7 @@ async def handle_client(reader, writer):
                     email = result_auth.get("email")
                     presence_setted = False # Установлен ли статус клиента в словаре
                     authorized = True # Отмечаем в переменной авторизацию
+                    legacy_version = result_auth.get("version2")
 
                     # Добавляем клиента в словарь
                     clients[address] = {
@@ -238,6 +240,7 @@ async def handle_client(reader, writer):
                     email = result_auth.get("email")
                     presence_setted = False # Установлен ли статус клиента в словаре
                     authorized = True # Отмечаем в переменной авторизацию
+                    legacy_version = result_auth.get("version2")
 
                     # Добавляем клиента в словарь
                     clients[address] = {
@@ -338,6 +341,7 @@ async def handle_client(reader, writer):
                         email = result_auth.get("email")
                         presence_setted = False # Установлен ли статус клиента в словаре
                         authorized = True # Отмечаем в переменной авторизацию
+                        legacy_version = result_auth.get("version2")
 
                         # Добавляем клиента в словарь
                         clients[address] = {
@@ -471,7 +475,7 @@ async def handle_client(reader, writer):
                 if greeted == False or authorized == False:
                     break
 
-                await new_message(writer, connection, address, payload, unbuilded_header.get("magic"), unbuilded_header.get("proto"), unbuilded_header.get("seq"), email)
+                await new_message(writer, connection, address, payload, unbuilded_header.get("magic"), unbuilded_header.get("proto"), unbuilded_header.get("seq"), email, legacy_version)
             elif unbuilded_header.get("command") == MRIM_CS_MESSAGE_RECV:
                 # Пакет о получении сообщения
                 logger.info("Получил команду MRIM_CS_MESSAGE_RECV от клиента {}".format(address[0]))
@@ -1408,7 +1412,7 @@ async def modify_contact(writer, connection, address, data, magic, proto, seq, e
 
     logger.info(parsed_data)
 
-async def new_message(writer, connection, address, data, magic, proto, seq, email):
+async def new_message(writer, connection, address, data, magic, proto, seq, email, legacy_version):
     """Отправка нового сообщения"""
     # Парсим пакет
     parsed_data = await new_message_parser(data, proto)
@@ -1434,18 +1438,17 @@ async def new_message(writer, connection, address, data, magic, proto, seq, emai
                     if parsed_data.get("flags") & MESSAGE_FLAG_NOTIFY:
                         return
 
-                    result = msg_id + flags + from_msg + message + rtf_message
-                    size = len(result)
+                    if "QIP" in client.get("legacy_version") and "QIP" in legacy_version:
+                        result = msg_id + flags + from_msg + message_utf16 + rtf_message
+                    else:
+                        result = msg_id + flags + from_msg + message + rtf_message
                 elif flags in [12]:
                     result = msg_id + flags + from_msg + message + rtf_message
-                    size = len(result)
                 else:                    
                     result = msg_id + flags + from_msg + message_utf16 + rtf_message
-                    size = len(result)
             else:
                 # Итоговые данные пакета
                 result = msg_id + flags + from_msg + message + rtf_message
-                size = len(result)
 
             # Билдим пакет
             response = await build_header(
@@ -1453,7 +1456,7 @@ async def new_message(writer, connection, address, data, magic, proto, seq, emai
                 client.get("proto"), 
                 1,
                 MRIM_CS_MESSAGE_ACK,
-                size
+                len(result)
             ) + result
 
             # Отправляем
