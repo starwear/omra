@@ -228,3 +228,14 @@ MRIM_CS_SMS_ACK = 0x1040 # S -> C
 MRIM_SMS_OK = 1
 MRIM_SMS_SERVICE_UNAVAILABLE = 2
 MRIM_SMS_INVALID_PARAMS = 0x10000
+
+### Звонки
+MRIM_CS_CALL = 0x1049 # C <-> S
+    # LPS -> email
+    # UL -> transfer id
+    # LPS -> ip
+
+MRIM_CS_CALL_ACK = 0x1032 # C <-> S
+    # UL -> call status
+    # LPS -> email
+    # UL -> transfer id

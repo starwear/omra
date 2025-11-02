@@ -793,3 +793,44 @@ async def sms_parser(data, proto):
         "phone": phone,
         "message": message
     }
+
+async def call_parser(data, proto):
+    """Парсер MRIM_CS_CALL"""
+
+    # Извлекаем почту
+    email_length = int.from_bytes(data[0:4], "little")
+    email_start = 4
+    email_end = email_start + email_length
+    email = data[email_start:email_end].decode("windows-1251")
+
+    # ID передачи
+    transfer_id = int.from_bytes(data[email_end:email_end + 4], "little")
+
+    # Айпи адреса для p2p
+    connection_address_length = int.from_bytes(data[email_end:email_end + 8], "little")
+    connection_address_start = email_end + 8
+    connection_address_end = connection_address_start + connection_address_length
+    connection_address = data[connection_address_start:connection_address_end].decode("windows-1251")
+
+    return {
+        "email": email,
+        "transfer_id": transfer_id,
+        "ips": connection_address
+    }
+
+async def call_ack_parser(data, proto):
+    """Парсер MRIM_CS_CALL_ACK"""
+    call_status = int.from_bytes(data[0:4], "little")
+
+    email_length = int.from_bytes(data[4:8], "little")
+    email_start = 8
+    email_end = email_start + email_length
+    email = data[email_start:email_end].decode("windows-1251")
+
+    transfer_id = int.from_bytes(data[email_end:email_end + 4], "little")
+
+    return {
+        "call_status": call_status,
+        "email": email,
+        "transfer_id": transfer_id
+    }
