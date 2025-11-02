@@ -1442,7 +1442,7 @@ async def new_message(writer, connection, address, data, magic, proto, seq, emai
                         result = msg_id + flags + from_msg + message_utf16 + rtf_message
                     else:
                         result = msg_id + flags + from_msg + message + rtf_message
-                elif flags in [12]:
+                elif parsed_data.get("flags") == 12:
                     result = msg_id + flags + from_msg + message + rtf_message
                 else:                    
                     result = msg_id + flags + from_msg + message_utf16 + rtf_message
