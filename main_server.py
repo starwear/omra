@@ -3,7 +3,7 @@
 # OMRA by Starwear
 
 # Импортируем библиотеки
-import asyncio, os, logging, hashlib, aiomysql, json, time, aiohttp, ssl
+import asyncio, os, logging, hashlib, aiomysql, json, time, aiohttp, ssl, base64
 from dotenv import load_dotenv
 
 # Импортируем реализацию
@@ -814,7 +814,7 @@ async def login3(writer, data, magic, proto, seq, connection, address):
             seq + 1, # Очередь пакета
             MRIM_CS_LOGIN_REJ, # Команда
             len(reason) # Размер пакета без заголовка
-        )
+        ) + reason
 
         # Записываем ответ в сокет
         writer.write(response)
@@ -947,13 +947,13 @@ async def contact_list(writer, groups, contacts, address, magic, proto, seq, con
         contact_list += await create_ul(status_num) # status
 
         ### MRIM 1.8, 1.9, 1.10, 1.11, 1.12, 1.13
-        if proto > 65543:
+        if proto >= 65543:
             contacts_mask = await create_lps("uussuus")
 
             contact_list += await create_lps(phone) # phone
 
         ### MRIM 1.14, 1.15, 1.16, 1.18, 1.19
-        if proto > 65549:
+        if proto >= 65549:
             contacts_mask = await create_lps("uussuussssus")
 
             contact_list += await create_lps(xstatus_meaning, encoding) # xstatus meaning
@@ -963,7 +963,7 @@ async def contact_list(writer, groups, contacts, address, magic, proto, seq, con
             contact_list += await create_lps("") # user agent 
 
         ### MRIM 1.20
-        if proto > 65556:
+        if proto >= 65556:
             contacts_mask = await create_lps("uussuussssusuuusss")
 
             contact_list += await create_ul(0) # ???
@@ -974,7 +974,7 @@ async def contact_list(writer, groups, contacts, address, magic, proto, seq, con
             contact_list += await create_lps("") # ???
 
         ### MRIM 1.21, 1.22
-        if proto > 65557:
+        if proto >= 65557:
             contacts_mask = await create_lps("uussuussssusuuussss")
 
             contact_list += await create_lps("") # ???
@@ -1435,6 +1435,48 @@ async def new_message(writer, connection, address, data, magic, proto, seq, emai
             if client.get("proto") in [65552, 65554, 65555, 65556, 65557, 65558, 65559]:
                 # Итоговые данные пакета
                 if "QIP" in client.get("legacy_version"):
+                    if parsed_data.get("flags") == 12:
+                        if proto >= 65552:
+                            # Декодим из base64
+                            decoded_invite = base64.b64decode(parsed_data.get("message"))
+
+                            # Парсим этот пиздец !!!
+                            lps_count = decoded_invite[0:4]
+
+                            nickname_length = int.from_bytes(decoded_invite[4:8], "little")
+                            nickname_start = 8
+                            nickname_end = nickname_start + nickname_length
+                            nickname = await create_lps(decoded_invite[nickname_start:nickname_end].decode("utf-16-le"))
+
+                            message_length = int.from_bytes(decoded_invite[nickname_end:nickname_end + 4], "little")
+                            message_start = nickname_end + 4
+                            message_end = message_start + message_length
+                            message = await create_lps(decoded_invite[message_start:message_end].decode("utf-16-le").encode("windows-1251"))
+
+                            # Пересобираем запрос авторизации
+                            invite_recoded = lps_count + nickname + message
+
+                            # Кодируем обратно в base64
+                            message = await create_lps(base64.b64encode(invite_recoded))
+
+                            result = msg_id + flags + from_msg + message + rtf_message
+
+                            # Билдим пакет
+                            response = await build_header(
+                                client.get("magic"),
+                                client.get("proto"), 
+                                1,
+                                MRIM_CS_MESSAGE_ACK,
+                                len(result)
+                            ) + result
+
+                            # Отправляем
+                            client.get("writer").write(response)
+                            await client.get("writer").drain()
+                            logger.info("Отправил команду MRIM_CS_MESSAGE_ACK клиенту {}".format(client.get("email")))
+
+                            return
+
                     # Защита пирога с васьком от половины (а может быть и всех) пустых сообщений
                     if parsed_data.get("flags") & MESSAGE_FLAG_NOTIFY:
                         return
@@ -1443,8 +1485,6 @@ async def new_message(writer, connection, address, data, magic, proto, seq, emai
                         result = msg_id + flags + from_msg + message_utf16 + rtf_message
                     else:
                         result = msg_id + flags + from_msg + message + rtf_message
-                elif parsed_data.get("flags") == 12:
-                    result = msg_id + flags + from_msg + message + rtf_message
                 else:                    
                     result = msg_id + flags + from_msg + message_utf16 + rtf_message
             else:

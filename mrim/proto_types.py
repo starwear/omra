@@ -56,9 +56,12 @@ async def create_ul(value: int):
     # Возвращаем результат
     return result
 
-async def create_lps(value: str, encoding: str = "windows-1251"):
+async def create_lps(value, encoding: str = "windows-1251"):
     # Кодируем строку в выбранную кодировку
-    value_encoded = value.encode(encoding)
+    if type(value) == bytes:
+        value_encoded = value
+    else:
+        value_encoded = value.encode(encoding)
 
     # Вычисляем длину строки
     value_length = await create_ul(len(value_encoded))
