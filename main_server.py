@@ -948,6 +948,10 @@ async def contact_list(writer, groups, contacts, address, magic, proto, seq, con
                 status_num = presence.get("status")
                 com_support = presence.get("com_support")
 
+                # Фикс прикола с 5 агентами
+                if proto in [65543, 65544, 65545, 65546, 65547, 65548, 65549] and status_num == 4:
+                    status_num = 1
+
         # Извлечение кастомного никнейма
         custom_nickname = contact.get("custom_nickname")
 
