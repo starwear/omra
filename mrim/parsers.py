@@ -834,3 +834,77 @@ async def call_ack_parser(data, proto):
         "email": email,
         "transfer_id": transfer_id
     }
+
+async def file_transfer_parser(data, proto):
+    """Парсер MRIM_CS_FILE_TRANSFER"""
+    # Почта
+    email_length = int.from_bytes(data[0:4], "little")
+    email_start = 4
+    email_end = email_start + email_length
+    email = data[email_start:email_end].decode("windows-1251")
+
+    # ID передачи
+    transfer_id = int.from_bytes(data[email_end:email_end + 4], "little")
+
+    # Суммарный размер всех файлов, которые нужно передать
+    total_size = int.from_bytes(data[email_end + 4:email_end + 8], "little")
+
+    # 3 этажный лпс мутантоподобный
+    floor_lps_length = int.from_bytes(data[email_end + 8:email_end + 12], "little")
+    floor_lps_start = email_end + 12
+    floor_lps_end = floor_lps_start + floor_lps_length
+    floor_lps = data[floor_lps_start:floor_lps_end]
+
+    # Описание всех передаваемых файлов
+    file_desc_length = int.from_bytes(data[email_end + 12:email_end + 16], "little")
+    file_desc_start = email_end + 16
+    file_desc_end = file_desc_start + file_desc_length
+    file_desc = data[file_desc_start:file_desc_end].decode("windows-1251")
+
+    # Пустой параметр
+    empty_param_length = int.from_bytes(data[file_desc_end:file_desc_end + 4], "little")
+    empty_param_start = file_desc_end + 4
+    empty_param_end = empty_param_start + empty_param_length
+    empty_param = data[empty_param_start:empty_param_end].decode("windows-1251")
+
+    # IP для p2p
+    connection_address_length = int.from_bytes(data[empty_param_end:empty_param_end + 8], "little")
+    connection_address_start = empty_param_end + 8
+    connection_address_end = connection_address_start + connection_address_length
+    connection_address = data[connection_address_start:connection_address_end].decode("windows-1251")
+
+    return {
+        "email": email,
+        "transfer_id": transfer_id,
+        "total_size": total_size,
+        "file_desc": file_desc,
+        "empty_param": empty_param,
+        "connection_address": connection_address
+    }
+
+async def file_transfer_ack_parser(data, proto):
+    """Парсер MRIM_CS_FILE_TRANSFER_ACK"""
+    # Статус
+    status = int.from_bytes(data[0:4], "little")
+
+    # Кому пакет адресован
+    email_length = int.from_bytes(data[4:8], "little")
+    email_start = 8
+    email_end = email_start + email_length
+    email = data[email_start:email_end].decode("windows-1251")
+
+    # ID передачи
+    transfer_id = int.from_bytes(data[email_end:email_end + 4], "little")
+
+    # Адреса зеркал
+    mirror_address_length = int.from_bytes(data[email_end + 4:email_end + 8], "little")
+    mirror_address_start = email_end + 4
+    mirror_address_end = mirror_address_start + mirror_address_length
+    mirror_address = data[mirror_address_start:mirror_address_end].decode("windows-1251")
+
+    return {
+        "status": status,
+        "email": email,
+        "transfer_id": transfer_id,
+        "mirror_address": mirror_address
+    }

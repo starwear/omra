@@ -239,3 +239,19 @@ MRIM_CS_CALL_ACK = 0x1032 # C <-> S
     # UL -> call status
     # LPS -> email
     # UL -> transfer id
+
+### Передача файлов
+MRIM_CS_FILE_TRANSFER = 0x1026 # C <-> S
+    # LPS -> to / from
+    # UL -> transfer id
+    # UL -> total size
+    # LPS:
+        # LPS -> file desc
+        # LPS -> empty
+        # LPS -> IP:PORT;
+
+MRIM_CS_FILE_TRANSFER_ACK = 0x1027 # C <-> S
+    # UL -> status
+    # LPS -> to / from
+    # UL -> transfer id
+    # LPS -> mirror
