@@ -159,6 +159,7 @@ async def handle_client(reader, writer):
                             presences[email]["xstatus_meaning"] = result_auth.get("xstatus_meaning")
                             presences[email]["xstatus_title"] = result_auth.get("xstatus_title")
                             presences[email]["xstatus_description"] = result_auth.get("xstatus_description")
+                            presences[email]["com_support"] = result_auth.get("com_support")
                             presence_setted = True
 
                     if presence_setted == False:
@@ -258,6 +259,7 @@ async def handle_client(reader, writer):
                             presences[email]["xstatus_meaning"] = "STATUS_ONLINE"
                             presences[email]["xstatus_title"] = "Онлайн"
                             presences[email]["xstatus_description"] = ""
+                            presences[email]["com_support"] = 0x3FF
                             presence_setted = True
 
                     if presence_setted == False:
@@ -333,97 +335,100 @@ async def handle_client(reader, writer):
                 if authorized == False:
                     logger.info("Получил команду (maybe) MRIM_CS_LOGIN4 от клиента {}".format(address[0]))
 
-                    # Выполняем авторизацию
-                    result_auth = await login3(writer, payload[unbuilded_header.get("size") + 44:], unbuilded_header.get("magic"), unbuilded_header.get("proto"), unbuilded_header.get("seq"), connection, address)
+                    try:
+                        # Выполняем авторизацию
+                        result_auth = await login3(writer, payload[unbuilded_header.get("size") + 44:], unbuilded_header.get("magic"), unbuilded_header.get("proto"), unbuilded_header.get("seq"), connection, address)
 
-                    # Проверяем результат
-                    if result_auth.get("result") == "success":
-                        email = result_auth.get("email")
-                        presence_setted = False # Установлен ли статус клиента в словаре
-                        authorized = True # Отмечаем в переменной авторизацию
-                        legacy_version = result_auth.get("version2")
+                        # Проверяем результат
+                        if result_auth.get("result") == "success":
+                            email = result_auth.get("email")
+                            presence_setted = False # Установлен ли статус клиента в словаре
+                            authorized = True # Отмечаем в переменной авторизацию
+                            legacy_version = result_auth.get("version2")
 
-                        # Добавляем клиента в словарь
-                        clients[address] = {
-                            "writer": writer,
-                            "email": result_auth.get("email"),
-                            "legacy_version": result_auth.get("version2"),
-                            "magic": unbuilded_header.get("magic"),
-                            "proto": unbuilded_header.get("proto")
-                        }
-
-                        # Добавляем статус клиента в словарь
-                        for presence in presences.values():
-                            if presence.get("email") == email:
-                                presences[email]["status"] = 1
-                                presences[email]["xstatus_meaning"] = "STATUS_ONLINE"
-                                presences[email]["xstatus_title"] = "Онлайн"
-                                presences[email]["xstatus_description"] = ""
-                                presence_setted = True
-
-                        if presence_setted == False:
-                            presences[email] = {
-                                "email": email,
-                                "status": 1,
-                                "xstatus_meaning": "STATUS_ONLINE",
-                                "xstatus_title": "Онлайн",
-                                "xstatus_description": "",
-                                "com_support": 0x3FF
+                            # Добавляем клиента в словарь
+                            clients[address] = {
+                                "writer": writer,
+                                "email": result_auth.get("email"),
+                                "legacy_version": result_auth.get("version2"),
+                                "magic": unbuilded_header.get("magic"),
+                                "proto": unbuilded_header.get("proto")
                             }
 
-                        # Получаем данные о аккаунте пользователя
-                        async with connection.cursor(aiomysql.DictCursor) as cursor:
-                            await cursor.execute("SELECT * FROM user_data WHERE email = %s", (email,))
-                            result_account_data = await cursor.fetchone()
+                            # Добавляем статус клиента в словарь
+                            for presence in presences.values():
+                                if presence.get("email") == email:
+                                    presences[email]["status"] = 1
+                                    presences[email]["xstatus_meaning"] = "STATUS_ONLINE"
+                                    presences[email]["xstatus_title"] = "Онлайн"
+                                    presences[email]["xstatus_description"] = ""
+                                    presence_setted = True
 
-                        # Получаем контакты
-                        contacts = json.loads(result_account_data.get("contacts"))
+                            if presence_setted == False:
+                                presences[email] = {
+                                    "email": email,
+                                    "status": 1,
+                                    "xstatus_meaning": "STATUS_ONLINE",
+                                    "xstatus_title": "Онлайн",
+                                    "xstatus_description": "",
+                                    "com_support": 0x3FF
+                                }
 
-                        # Собираем пакет
-                        status = await create_ul(1)
-                        xstatus_meaning = await create_lps("STATUS_ONLINE")
-                        xstatus_title_cp1251 = await create_lps("Онлайн")
-                        xstatus_description_cp1251 = await create_lps("")
-                        xstatus_title_utf16 = await create_lps("Онлайн", "utf-16-le")
-                        xstatus_description_utf16 = await create_lps("", "utf-16-le")
-                        email_encoded = await create_lps(email)
-                        com_support = await create_ul(0x3FF)
-                        user_agent = await create_lps("")
+                            # Получаем данные о аккаунте пользователя
+                            async with connection.cursor(aiomysql.DictCursor) as cursor:
+                                await cursor.execute("SELECT * FROM user_data WHERE email = %s", (email,))
+                                result_account_data = await cursor.fetchone()
 
-                        # Рассылка нового статуса всем контактам
-                        for contact in contacts:
-                            for client in clients.values():
-                                if client.get("email") == contact.get("email"):
-                                    if client.get("proto") in [65543, 65544, 65545, 65546, 65547, 65548, 65549]:
-                                        packet_data = status + email_encoded
+                            # Получаем контакты
+                            contacts = json.loads(result_account_data.get("contacts"))
 
-                                        # Фикс прикола с 5 агентами
-                                        if result_auth.get("status") == 4:
-                                            packet_data = await create_ul(1) + email_encoded
-                                    elif client.get("proto") in [65550, 65551]:
-                                        packet_data = status + xstatus_meaning + xstatus_title_cp1251 + xstatus_description_cp1251 + email_encoded + com_support + user_agent      
-                                    elif client.get("proto") in [65552, 65554, 65555, 65556, 65557, 65558, 65559]:
-                                        packet_data = status + xstatus_meaning + xstatus_title_utf16 + xstatus_description_utf16 + email_encoded + com_support + user_agent
-                                    else:
-                                        packet_data = status + email_encoded
+                            # Собираем пакет
+                            status = await create_ul(1)
+                            xstatus_meaning = await create_lps("STATUS_ONLINE")
+                            xstatus_title_cp1251 = await create_lps("Онлайн")
+                            xstatus_description_cp1251 = await create_lps("")
+                            xstatus_title_utf16 = await create_lps("Онлайн", "utf-16-le")
+                            xstatus_description_utf16 = await create_lps("", "utf-16-le")
+                            email_encoded = await create_lps(email)
+                            com_support = await create_ul(0x3FF)
+                            user_agent = await create_lps("")
 
-                                        # Фикс прикола с 5 агентами
-                                        if result_auth.get("status") == 4:
-                                            packet_data = await create_ul(1) + email_encoded
+                            # Рассылка нового статуса всем контактам
+                            for contact in contacts:
+                                for client in clients.values():
+                                    if client.get("email") == contact.get("email"):
+                                        if client.get("proto") in [65543, 65544, 65545, 65546, 65547, 65548, 65549]:
+                                            packet_data = status + email_encoded
 
-                                    response = await build_header(
-                                        client.get("magic"),
-                                        client.get("proto"),
-                                        1,
-                                        MRIM_CS_USER_STATUS,
-                                        len(packet_data)
-                                    ) + packet_data
+                                            # Фикс прикола с 5 агентами
+                                            if result_auth.get("status") == 4:
+                                                packet_data = await create_ul(1) + email_encoded
+                                        elif client.get("proto") in [65550, 65551]:
+                                            packet_data = status + xstatus_meaning + xstatus_title_cp1251 + xstatus_description_cp1251 + email_encoded + com_support + user_agent      
+                                        elif client.get("proto") in [65552, 65554, 65555, 65556, 65557, 65558, 65559]:
+                                            packet_data = status + xstatus_meaning + xstatus_title_utf16 + xstatus_description_utf16 + email_encoded + com_support + user_agent
+                                        else:
+                                            packet_data = status + email_encoded
 
-                                    client.get("writer").write(response)
-                                    await client.get("writer").drain()
-                                    logger.info(f"Отправил пакет MRIM_CS_USER_STATUS пользователю {client.get("email")}")    
-                    else:
-                        break
+                                            # Фикс прикола с 5 агентами
+                                            if result_auth.get("status") == 4:
+                                                packet_data = await create_ul(1) + email_encoded
+
+                                        response = await build_header(
+                                            client.get("magic"),
+                                            client.get("proto"),
+                                            1,
+                                            MRIM_CS_USER_STATUS,
+                                            len(packet_data)
+                                        ) + packet_data
+
+                                        client.get("writer").write(response)
+                                        await client.get("writer").drain()
+                                        logger.info(f"Отправил пакет MRIM_CS_USER_STATUS пользователю {client.get("email")}")    
+                        else:
+                            break
+                    except:
+                        pass
             elif unbuilded_header.get("command") == MRIM_CS_PING:
                 # keep-alive
                 logger.info("Получил команду MRIM_CS_PING от клиента {}".format(address[0]))
