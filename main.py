@@ -1,14 +1,29 @@
 # -*- coding: utf-8 -*-
 
-# OMRA, by Starwear
+# OMRA by Starwear
 
 # Импортируем библиотеки
-import asyncio, main_server, redirect_server
+import asyncio, mrim.main_server, mrim.redirect_server, os, logging
+from dotenv import load_dotenv
+
+# Загрузка конфигурации сервера
+load_dotenv()
+
+telegram_bot_token = os.environ.get("telegram_bot_token")
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+
+# Словарь клиентов
+clients = {}
+
+# Словарь статусов
+presences = {}
 
 async def main():
     await asyncio.gather(
-        redirect_server.main(),
-        main_server.main()
+        mrim.redirect_server.main(),
+        mrim.main_server.main()
     )
 
 if __name__ == "__main__":
