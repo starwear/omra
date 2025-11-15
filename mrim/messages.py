@@ -9,7 +9,7 @@ import base64
 from mrim.parsers import new_message_parser, recv_message_parser
 from mrim.proto_types import create_lps, create_ul, build_header
 from mrim.proto import MRIM_CS_MESSAGE_ACK, MESSAGE_FLAG_NOTIFY, MRIM_CS_MESSAGE_STATUS, MESSAGE_REJECTED_DENY_OFFMSG, MESSAGE_DELIVERED
-from main import clients, logger
+from utils import clients, logger
 
 async def new_message(writer, connection, address, data, magic, proto, seq, email, legacy_version):
     """Отправка нового сообщения"""
@@ -83,6 +83,8 @@ async def new_message(writer, connection, address, data, magic, proto, seq, emai
                         result = msg_id + flags + from_msg + message_utf16 + rtf_message
                     else:
                         result = msg_id + flags + from_msg + message + rtf_message
+                elif parsed_data.get("flags") == 12:
+                    result = msg_id + flags + from_msg + message + rtf_message
                 else:                    
                     result = msg_id + flags + from_msg + message_utf16 + rtf_message
             else:

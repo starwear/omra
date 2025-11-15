@@ -9,7 +9,7 @@ import aiomysql, json
 from mrim.parsers import add_contact_parser
 from mrim.proto_types import create_ul, build_header
 from mrim.proto import MRIM_CS_ADD_CONTACT_ACK, CONTACT_OPER_USER_EXISTS, CONTACT_OPER_SUCCESS, CONTACT_OPER_NO_SUCH_USER, CONTACT_FLAG_GROUP, CONTACT_OPER_GROUP_LIMIT
-from main import logger
+from utils import logger
 
 async def add_contact(writer, connection, address, data, magic, proto, seq, email):
     async with connection.cursor(aiomysql.DictCursor) as cursor:

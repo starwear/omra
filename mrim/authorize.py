@@ -9,7 +9,7 @@ import aiomysql, json
 from mrim.parsers import authorize_parser
 from mrim.proto_types import create_lps, build_header
 from mrim.proto import MRIM_CS_AUTHORIZE_ACK
-from main import clients, logger
+from utils import clients, logger
 
 async def authorize_contact(data, connection, proto, email):
     """Авторизация контакта"""

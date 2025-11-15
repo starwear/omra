@@ -21,7 +21,7 @@ from mrim.file_transfer import *
 from mrim.sms import *
 from mrim.games import *
 
-from main import clients, presences, logger
+from utils import clients, presences, logger
 
 # Загружаем конфигурацию
 load_dotenv()

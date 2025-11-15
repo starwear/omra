@@ -5,6 +5,7 @@
 # Импортируем библиотеки
 import asyncio, os
 from dotenv import load_dotenv
+from utils import logger
 
 # Загрузка конфигурации
 load_dotenv()
@@ -18,15 +19,21 @@ main_port = os.environ.get("main_port") # Порт главного сервер
 
 async def handle_client(reader, writer):
     """Функция обработки подключений"""
+    # Получение адреса подключения
+    address = writer.get_extra_info("peername")
+
+    logger.info("Работаю с клиентом: {}".format(address))
+
     try:
-        writer.write(f"{main_host}:{main_port}\n".encode("windows-1251"))
+        writer.write("{}:{}\n".format(main_host, main_port).encode("windows-1251"))
         await writer.drain()
         writer.close()
-    except:
-        pass
+    except Exception as error:
+        logger.info("Произошла ошибка: {}".format(error))
     finally:
         writer.close()
         await writer.wait_closed()
+        logger.info("Работа с клиентом {} завершена".format(address))
 
 async def main():
     """Главная функция сервера"""

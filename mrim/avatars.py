@@ -1,9 +1,11 @@
-import os
-import io
-import time
+# -*- coding: utf-8 -*-
+
+# OMRA by Starwear
+
+# Импортирование библиотек
+import os, io, time, asyncio
 from datetime import datetime, timedelta
 from email.utils import formatdate
-
 from aiohttp import web
 from dotenv import load_dotenv
 from PIL import Image
@@ -11,6 +13,11 @@ from PIL import Image
 # Загружаем конфигурацию сервера
 load_dotenv()
 
+# Хост и порт сервера
+host = os.environ.get("avatars_host")
+port = int(os.environ.get("avatars_port"))
+
+# Папка с аватарками
 AVATARS_PATH = os.environ.get("avatars_path")
 
 async def get_avatar(request):
@@ -32,6 +39,8 @@ async def get_avatar(request):
         size = 60
     elif type_avatar == "_mrimavatar180":
         size = 180
+    elif type_avatar == "_mrimavatarbig":
+        size = 640
     else:
         return web.Response(text="Bad Request", status=400)
 
@@ -91,5 +100,14 @@ async def get_avatar(request):
 app = web.Application()
 app.router.add_get('/{domain}/{username}/{type}', get_avatar)
 
-if __name__ == '__main__':
-    web.run_app(app, host=os.environ.get("avatars_host"), port=int(os.environ.get("avatars_port")))
+async def main():
+    """Главная функция сервера"""
+    runner = web.AppRunner(app)
+    await runner.setup()
+    server = web.TCPSite(runner, host, port)
+    await server.start()
+
+    try:
+        await asyncio.Event().wait()
+    finally:
+        await runner.cleanup()

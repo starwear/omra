@@ -9,7 +9,7 @@ import aiomysql, aiohttp
 from mrim.parsers import sms_parser
 from mrim.proto_types import create_ul, build_header
 from mrim.proto import MRIM_CS_SMS_ACK, MRIM_SMS_OK, MRIM_SMS_SERVICE_UNAVAILABLE
-from main import telegram_bot_token, logger
+from utils import telegram_bot_token, logger
 
 async def send_sms(writer, address, data, magic, proto, seq, connection, email):
     """Отправка SMS в Telegram"""

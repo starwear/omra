@@ -6,7 +6,7 @@
 from mrim.parsers import games_parser
 from mrim.proto_types import create_lps, create_ul, build_header
 from mrim.proto import MRIM_CS_GAME
-from main import clients, logger
+from utils import clients, logger
 
 async def games(data, proto, email):
     """Игры"""

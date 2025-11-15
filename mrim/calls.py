@@ -6,7 +6,7 @@
 from mrim.proto_types import create_lps, create_ul, build_header
 from mrim.proto import MRIM_CS_CALL, MRIM_CS_CALL_ACK
 from mrim.parsers import call_parser, call_ack_parser
-from main import clients, logger
+from utils import clients, logger
 
 async def call(data, proto, email):
     """Звонки"""

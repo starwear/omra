@@ -9,7 +9,7 @@ import aiomysql, json
 from mrim.parsers import change_status_parser
 from mrim.proto_types import *
 from mrim.proto import MRIM_CS_USER_STATUS
-from main import clients, presences, logger
+from utils import clients, presences, logger
 
 async def change_status(connection, address, email, data, version):
     """Смена статуса пользователем"""

@@ -41,9 +41,7 @@ avatars_host = 127.0.0.1
 
 ```sql
 INSERT INTO `users` (`email`, `password`) VALUES ("admin@mail.ru", MD5("qwerty"));
-
-INSERT INTO `user_data` (`email`, `nickname`, `groups`, `contacts`, `status`) VALUES ("admin@mail.ru", "Admin", "[{'flags':0,'name':'General'}]", "[]", 1);
-
+INSERT INTO `user_data` (`email`, `nickname`, `groups`, `contacts`, `status`) VALUES ("admin@mail.ru", "Admin", '[{"flags":0,"name":"General"}]', "[]", 1);
 INSERT INTO `anketa` (`email`, `username`, `domain`) VALUES ("admin@mail.ru", "admin", "mail.ru");
 ```
 

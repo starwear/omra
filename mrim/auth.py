@@ -9,7 +9,7 @@ import hashlib, aiomysql, json
 from mrim.parsers import login2_parser, login3_parser
 from mrim.proto_types import create_lps, create_ul, build_header
 from mrim.proto import MRIM_CS_LOGIN_ACK, MRIM_CS_LOGIN_REJ, MRIM_CS_CONTACT_LIST2, MRIM_CS_USER_INFO, GET_CONTACTS_OK, CONTACT_FLAG_GROUP
-from main import presences, logger
+from utils import presences, logger
 
 async def login3(writer, data, magic, proto, seq, connection, address):
     """Обработка пакета MRIM_CS_LOGIN3"""

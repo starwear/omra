@@ -9,7 +9,7 @@ import aiomysql, time
 from mrim.parsers import wp_request_parser
 from mrim.proto_types import create_lps, create_ul, build_header
 from mrim.proto import MRIM_CS_ANKETA_INFO, MRIM_CS_WP_REQUEST_PARAM_USER, MRIM_CS_WP_REQUEST_PARAM_DOMAIN, MRIM_ANKETA_INFO_STATUS_OK, MRIM_ANKETA_INFO_STATUS_NOUSER
-from main import logger
+from utils import logger
 
 async def wp_request(writer, connection, address, data, magic, proto, seq):
     """Обработка MRIM_CS_WP_REQUEST (поиск)"""

@@ -6,7 +6,7 @@
 from mrim.parsers import file_transfer_parser, file_transfer_ack_parser
 from mrim.proto_types import create_lps, create_ul, build_header
 from mrim.proto import MRIM_CS_FILE_TRANSFER, MRIM_CS_FILE_TRANSFER_ACK
-from main import clients, logger
+from utils import clients, logger
 
 async def file_transfer(data, proto, email):
     """Передача файлов"""
