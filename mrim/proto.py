@@ -255,3 +255,16 @@ MRIM_CS_FILE_TRANSFER_ACK = 0x1027 # C <-> S
     # LPS -> to / from
     # UL -> transfer id
     # LPS -> mirror
+
+### Микроблог
+MRIM_CS_CHANGE_USER_BLOG_STATUS	= 0x1064 # C -> S
+    # UL -> flags
+    # LPS -> message
+
+MRIM_CS_USER_BLOG_STATUS = 0x1063 # S -> C
+    # UL -> flags
+    # LPS -> user
+    # UL -> id 
+    # UL -> time
+    # LPS -> text
+    # LPS -> reply user nick

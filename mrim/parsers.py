@@ -908,3 +908,20 @@ async def file_transfer_ack_parser(data, proto):
         "transfer_id": transfer_id,
         "mirror_address": mirror_address
     }
+
+async def microblog_change_parser(data, proto):
+    """Парсер MRIM_CS_CHANGE_USER_BLOG_STATUS"""
+    # Извлечение флагов
+    flags = int.from_bytes(data[0:4], "little")
+
+    # Извлечение текста сообщения
+    message_length = int.from_bytes(data[4:8], "little")
+    message_start = 8
+    message_end = message_start + message_length
+    message = data[message_start:message_end].decode("utf-16-le")
+
+    # Возвращаем
+    return {
+        "flags": flags,
+        "message": message
+    }

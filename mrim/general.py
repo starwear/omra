@@ -20,6 +20,7 @@ from mrim.calls import *
 from mrim.file_transfer import *
 from mrim.sms import *
 from mrim.games import *
+from mrim.microblog import *
 
 from utils import clients, presences, logger
 
@@ -291,6 +292,15 @@ async def handle_client(reader, writer):
                     break
 
                 await file_transfer_ack(payload, unbuilded_header.get("proto"), email)
+            elif unbuilded_header.get("command") == MRIM_CS_CHANGE_USER_BLOG_STATUS:
+                # Добавление новой записи в микроблог
+                logger.info(f"Получил команду MRIM_CS_CHANGE_USER_BLOG_STATUS от клиента {address[0]}")
+
+                # Проверка приветствия и авторизации
+                if greeted == False or authorized == False:
+                    break
+
+                await microblog_change(connection, email, payload, unbuilded_header.get("proto"))
             else:
                 logger.info(f"Неизвестная команда {hex(unbuilded_header.get('command'))}: {unbuilded_header};{payload}")
     finally:
@@ -403,7 +413,13 @@ async def complete_auth(writer, unbuilded_header, address, email, connection, re
             "xstatus_meaning": "STATUS_ONLINE",
             "xstatus_title": "Онлайн",
             "xstatus_description": "",
-            "com_support": 0x3FF
+            "com_support": 0x3FF,
+            "microblog": {
+                "post_id": 0,
+                "time": 0,
+                "text": "",
+                "reply_to": ""
+            }
         }
 
     # Получаем данные о аккаунте пользователя

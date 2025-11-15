@@ -345,6 +345,12 @@ async def contact_list(writer, groups, contacts, address, magic, proto, seq, con
         xstatus_desc = ""
         status_num = 0
         com_support = 0
+        microblog = {
+            "post_id": 0,
+            "time": 0,
+            "text": "",
+            "reply_to": ""
+        }
 
         # Ищем клиента в списке и записываем его статус
         for presence in presences.values():
@@ -355,6 +361,7 @@ async def contact_list(writer, groups, contacts, address, magic, proto, seq, con
                 xstatus_desc = presence.get("xstatus_description")
                 status_num = presence.get("status")
                 com_support = presence.get("com_support")
+                microblog = presence.get("microblog")
 
                 # Фикс прикола с 5 агентами
                 if proto in [65543, 65544, 65545, 65546, 65547, 65548, 65549] and status_num == 4:
@@ -396,12 +403,12 @@ async def contact_list(writer, groups, contacts, address, magic, proto, seq, con
         if proto >= 65556:
             contacts_mask = await create_lps("uussuussssusuuusss")
 
-            contact_list += await create_ul(0) # ???
-            contact_list += await create_ul(0) # ???
-            contact_list += await create_ul(0) # ???
+            contact_list += await create_ul(microblog.get("post_id")) # post id
+            contact_list += await create_ul(microblog.get("post_id")) # post id
+            contact_list += await create_ul(microblog.get("time")) # time
+            contact_list += await create_lps(microblog.get("text"), "utf-16-le") # message
             contact_list += await create_lps("") # ???
-            contact_list += await create_lps("") # ???
-            contact_list += await create_lps("") # ???
+            contact_list += await create_lps(microblog.get("reply_to")) # reply to
 
         ### MRIM 1.21, 1.22
         if proto >= 65557:
