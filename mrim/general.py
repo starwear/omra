@@ -463,5 +463,5 @@ async def main():
     server = await asyncio.start_server(handle_client, host, port)
     
     async with server:
-        logger.info(f"MRIM-сервер запущен на портах {os.environ.get('redirect_port')} // {os.environ.get('main_port')}")
+        logger.info(f"MRIM-сервер запущен на портах {os.environ.get('redirect_port')} // {os.environ.get('main_port')} // {os.environ.get("avatars_port")}")
         await server.serve_forever()

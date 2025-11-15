@@ -8,8 +8,8 @@ import asyncio, mrim.general, mrim.redirect, mrim.avatars
 async def main():
     await asyncio.gather(
         mrim.redirect.main(),
-        mrim.general.main(),
-        mrim.avatars.main()
+        mrim.avatars.main(),
+        mrim.general.main()
     )
 
 if __name__ == "__main__":
